@@ -12,7 +12,6 @@ import { DialogSet } from './dialogSet';
 import { PromptOptions } from './prompts';
 import { StateMap } from './stateMap';
 import { DialogContextState } from './dialogContextState';
-import { DialogCommand } from './dialogCommand';
 import { DialogContainer } from './dialogContainer';
 
 /**

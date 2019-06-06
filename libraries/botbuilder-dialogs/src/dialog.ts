@@ -129,12 +129,6 @@ export interface DialogTurnResult<T = any> {
      * Final result returned by a dialog that just completed. Can be `undefined` even when [hasResult](#hasResult) is true.
      */
     result?: T;
-
-    /**
-     * If true, a `DialogCommand` has ended its parent container and the parent should not perform 
-     * any further processing.
-     */
-    parentEnded?: boolean;
 }
 
 export interface DialogEvent<T = any> {
