@@ -1,11 +1,11 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogConfiguration, DialogCommand, DialogContext } from 'botbuilder-dialogs';
+import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
 import { format } from '../stringTemplate';
 import { Activity, ActivityTypes } from 'botbuilder-core';
 
@@ -13,64 +13,61 @@ export interface LogStepConfiguration extends DialogConfiguration {
     /**
      * The text template to log.
      */
-    template?: string;
+    text?: string;
 
     /**
      * If true, the message will both be logged to the console and sent as a trace activity.
      * Defaults to a value of false.
      */
-    sendTrace?: boolean;
+    traceActivity?: boolean;
 }
 
-export class LogStep extends DialogCommand {
+export class LogStep extends Dialog {
     /**
      * The text template to log. 
      */
-    public template: string;
+    public text: string;
 
     /**
      * If true, the message will both be logged to the console and sent as a trace activity. 
      * Defaults to a value of false.
      */
-    public sendTrace: boolean;
+    public traceActivity: boolean;
 
     /**
-     * Creates a new `SendActivity` instance.
-     * @param template The text template to log.  
-     * @param sendTrace (Optional) If true, the message will both be logged to the console and sent as a trace activity.  Defaults to a value of false.
+     * Creates a new `LogStep` instance.
+     * @param text The text template to log.  
+     * @param traceActivity (Optional) If true, the message will both be logged to the console and sent as a trace activity.  Defaults to a value of false.
      */
     constructor();
-    constructor(template: string, sendTrace?: boolean);
-    constructor(template?: string, sendTrace = false) {
+    constructor(text: string, traceActivity?: boolean);
+    constructor(text?: string, traceActivity = false) {
         super();
-        if (template) { this.template = template }
-        this.sendTrace = sendTrace;
+        if (text) { this.text = text }
+        this.traceActivity = traceActivity;
     }
 
     protected onComputeID(): string {
-        return `logStep[${this.hashedLabel(this.template)}]`;
+        return `logStep[${this.hashedLabel(this.text)}]`;
     }
 
     public configure(config: LogStepConfiguration): this {
         return super.configure(config);
     }
     
-    protected async onRunCommand(dc: DialogContext, options: object): Promise<DialogTurnResult> {
-        if (!this.template) { throw new Error(`${this.id}: no 'message' specified.`) } 
+    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+        if (!this.text) { throw new Error(`${this.id}: no 'message' specified.`) } 
 
         // Format message
-        const data = Object.assign({
-            utterance: dc.context.activity.text || ''
-        }, dc.state.toJSON(), options);
-        const msg = format(this.template, data);
+        const msg = format(this.text, dc.state.toJSON());
 
         // Log to console and send trace if needed
         console.log(msg);
-        if (this.sendTrace) {
+        if (this.traceActivity) {
             const activity: Partial<Activity> = {
                 type: ActivityTypes.Trace,
-                name: 'LogStep',
-                valueType: 'string',
+                name: 'Log',
+                valueType: 'Text',
                 value: msg
             };
             await dc.context.sendActivity(activity);
