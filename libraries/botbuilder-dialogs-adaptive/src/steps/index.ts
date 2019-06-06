@@ -8,6 +8,7 @@
 export * from './beginDialog';
 export * from './cancelAllDialogs';
 export * from './codeStep';
+export * from './debugBreak';
 export * from './deleteProperty';
 export * from './editArray';
 export * from './editSteps';
