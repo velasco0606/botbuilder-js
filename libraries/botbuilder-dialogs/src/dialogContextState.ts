@@ -149,6 +149,23 @@ export class DialogContextState {
     }
 
     /**
+     * Removes an in-memory property using a JSONPath expression.
+     * @param pathExpression JSONPath expression for property to remove. The leading `$.` is optional.
+     */
+    public removeValue(pathExpression: string): void {
+        const path = DialogContextState.resolvePath(pathExpression).split('.');
+        const prop = path.pop();
+        if (path.length > 0) {
+            const value = jsonpath.value(this.toJSON(), path.join('.'));
+            if (typeof value == 'object' && value.hasOwnProperty(prop)) {
+                delete value[prop];
+            }
+        } else {
+            throw new Error(`DialogContext.state.RemoveValue: invalid path of "${pathExpression}".`)
+        }
+    }
+
+    /**
      * Assigns a value to an in-memory property using a given JSONPath expression.
      * @param pathExpression JSONPath expression to evaluate. The leading `$.` is optional.
      * @param value Value to assign.
