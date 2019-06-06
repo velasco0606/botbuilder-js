@@ -22,7 +22,6 @@ export * from './initProperty';
 export * from './logStep';
 export * from './repeatDialog';
 export * from './replaceDialog';
-export * from './saveEntity';
 export * from './sendActivity';
 export * from './sendList';
 export * from './setProperty';
