@@ -1,32 +1,30 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogCommand, DialogContext, DialogConfiguration, Dialog } from 'botbuilder-dialogs';
+import { DialogTurnResult, DialogContext, DialogConfiguration, Dialog } from 'botbuilder-dialogs';
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
 
 export interface EmitEventConfiguration extends DialogConfiguration {
     eventName?: string;
-    eventValue?: string;
+    eventValue?: ExpressionPropertyValue<any>;
     eventValueProperty?: string;
     bubbleEvent?: boolean;
     resultProperty?: string;
 }
 
-export class EmitEvent extends DialogCommand {
+export class EmitEvent extends Dialog {
 
     constructor();
-    constructor(eventName: string, eventValue?: string|object, bubbleEvent?: boolean);
-    constructor(eventName?: string, eventValue?: string|object, bubbleEvent = true) {
+    constructor(eventName: string, eventValue?: ExpressionPropertyValue<any>, bubbleEvent?: boolean);
+    constructor(eventName?: string, eventValue?: ExpressionPropertyValue<any>, bubbleEvent = true) {
         super();
+        this.inheritState = true;
         this.eventName = eventName;
-        if (typeof eventValue == 'string') {
-            this.eventValueProperty = eventValue;
-        } else {
-            this.eventValue = eventValue
-        }
+        if (eventValue) { this.eventValue = new ExpressionProperty(eventValue) }
         this.bubbleEvent = bubbleEvent;
     }
     
@@ -36,17 +34,9 @@ export class EmitEvent extends DialogCommand {
 
     public eventName: string;
 
-    public eventValue: object;
+    public eventValue: ExpressionProperty<any>;
 
     public bubbleEvent: boolean;
-
-    public set eventValueProperty(value: string) {
-        this.inputProperties['eventValue'] = value;
-    }
-
-    public get eventValueProperty(): string {
-        return this.inputProperties['eventValue'];
-    }
 
     public set resultProperty(value: string) {
         this.outputProperty = value;
@@ -57,17 +47,26 @@ export class EmitEvent extends DialogCommand {
     }
 
     public configure(config: EmitEventConfiguration): this {
-        return super.configure(config);
+        for (const key in config) {
+            if (config.hasOwnProperty(key)) {
+                const value = config[key];
+                switch(key) {
+                    case 'eventValue':
+                        this.eventValue = new ExpressionProperty(value);
+                        break;
+                    default:
+                        super.configure({ [key]: value });
+                        break;
+                }
+            }
+        }
+
+        return this;
     }
     
-    protected async onRunCommand(dc: DialogContext, options: object): Promise<DialogTurnResult> {
-        const opt = Object.assign({
-            eventName: this.eventName,
-            eventValue: this.eventValue,
-            bubbleEvent: this.bubbleEvent
-        }, options);
-
-        const handled = await dc.emitEvent(opt.eventName, opt.eventValue, opt.bubbleEvent);
+    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+        const value = this.eventValue ? this.eventValue.evaluate(this.id, dc.state.toJSON()) : undefined
+        const handled = await dc.emitEvent(this.eventName, value, this.bubbleEvent);
         if (handled) {
             // Defer continuation of plan until next turn
             return Dialog.EndOfTurn;
