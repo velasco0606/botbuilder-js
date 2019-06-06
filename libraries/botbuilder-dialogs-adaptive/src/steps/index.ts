@@ -1,5 +1,5 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
@@ -18,6 +18,7 @@ export * from './emitEvent';
 export * from './endDialog';
 export * from './endTurn';
 export * from './ifCondition';
+export * from './initProperty';
 export * from './logStep';
 export * from './repeatDialog';
 export * from './replaceDialog';
