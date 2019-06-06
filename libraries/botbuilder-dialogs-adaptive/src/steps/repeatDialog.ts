@@ -1,54 +1,71 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogConfiguration, Dialog, DialogCommand, DialogContext } from 'botbuilder-dialogs';
+import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
+import { NamedDialogOption, BeginDialog } from './beginDialog';
+import { ExpressionProperty, ExpressionPropertyValue } from '../expressionProperty';
 
 export interface RepeatDialogConfiguration extends DialogConfiguration {
     /**
-     * (Optional) static options to pass into the dialog when it's repeated.
-     * 
-     * @remarks
-     * These options will be merged with any options that were originally passed into the dialog
-     * or options that were dynamically configured using [inputBindings](#inputbindings).
+     * (Optional) list of computed options to pass called dialog.
      */
-    options?: object;
+    options?: NamedDialogOption[];
 }
 
-export class RepeatDialog extends DialogCommand {
+export class RepeatDialog extends Dialog {
+    /**
+     * (Optional) Computed options to pass called dialog.
+     */
+    public options: { [name: string]: ExpressionProperty<any>; } = {};
 
     /**
      * Creates a new `RepeatDialog` instance.
-     * @param options (Optional) static options to pass into the dialog when it's repeated.
      */
-    constructor(options?: object) {
+    constructor() {
         super();
-        if (options) { this.options = options }
+        this.inheritState = true;
     }
 
     protected onComputeID(): string {
-        return `repeat[${this.bindingPath()}]`;
+        return `repeatDialog[${this.bindingPath()}]`;
     }
 
-    /**
-     * (Optional) static options to pass into the dialog when it's repeated.
-     * 
-     * @remarks
-     * These options will be merged with any options that were originally passed into the dialog
-     * or options that were dynamically configured using [inputBindings](#inputbindings).
-     */
-    public options?: object;
+    public addOption(name: string, value: ExpressionPropertyValue<any>): this {
+        if (this.options.hasOwnProperty(name)) { throw new Error(`${this.id}: an option named "${name}" has already been added.`) }
+        this.options[name] = new ExpressionProperty(value);
+        return this;
+    }
 
     public configure(config: RepeatDialogConfiguration): this {
-        return super.configure(config);
+        for (const key in config) {
+            if (config.hasOwnProperty(key)) {
+                const value = config[key];
+                switch(key) {
+                    case 'options':
+                        if (Array.isArray(value)) {
+                            (value as NamedDialogOption[]).forEach(opt => this.addOption(opt.name, opt.value))
+                        }
+                        break;
+                    default:
+                        super.configure({ [key]: value });
+                        break;
+                }
+            }
+        }
+
+        return this;
     }
 
-    protected async onRunCommand(dc: DialogContext, options?: object): Promise<DialogTurnResult> {
-        const originalOptions = dc.state.dialog.get('options');
-        options = Object.assign({}, originalOptions, options, this.options);
-        return await this.repeatParentDialog(dc, options);
+    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+        if (!dc.parent) { throw new Error(`${this.id}: step should only ever be used within a container dialog.`) }
+
+        // Compute options and reload parent dialog
+        const options = BeginDialog.computeOptions(this.options, this.id, dc.state.toJSON());
+        const dialogId = dc.parent.activeDialog.id;
+        return await dc.parent.replaceDialog(dialogId, options);
     }
 }

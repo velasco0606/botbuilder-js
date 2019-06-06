@@ -1,11 +1,12 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { Dialog, DialogTurnResult, DialogConfiguration, DialogContext } from 'botbuilder-dialogs';
+import { Dialog, DialogTurnResult, DialogConfiguration, DialogContext, DialogContextVisibleState } from 'botbuilder-dialogs';
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
 
 export interface BeginDialogConfiguration extends DialogConfiguration {
     /**
@@ -14,91 +15,121 @@ export interface BeginDialogConfiguration extends DialogConfiguration {
     dialogId?: string;
 
     /**
-     * (Optional) static options to pass to called dialog.
-     * 
-     * @remarks
-     * These options will be merged with any dynamic options configured as 
-     * [inputBindings](#inputbindings).
+     * (Optional) list of computed options to pass called dialog.
      */
-    options?: object;
+    options?: NamedDialogOption[];
+
+    resultProperty?: string;
 
     /**
-     * (Optional) data binds the called dialogs input & output to the given state property.
+     * (Optional) in-memory property to bind the dialogs input and output to.
      * 
      * @remarks
-     * The bound properties current value will be passed to the called dialog as part of its 
-     * options and will be accessible within the dialog via `dialog.options.value`. The result
-     * returned from the called dialog will then be copied to the bound property.
+     * The called dialog will be able to access the passed in value via `dialog.value` or
+     * the shortcut of `$value`.
      */
-    property?: string;
+    valueProperty?: string;
 }
 
-export class BeginDialog<O extends object = {}> extends Dialog<O> {
+export interface NamedDialogOption {
+    name: string;
+    value: ExpressionPropertyValue<any>; 
+}
 
-    /**
-     * Creates a new `BeginDialog` instance.
-     * @param dialogId ID of the dialog to call.
-     * @param property (Optional) property to bind the called dialogs value to.
-     * @param options (Optional) static options to pass the called dialog.
-     */
-    constructor();
-    constructor(dialogId: string, options?: O);
-    constructor(dialogId: string, property: string, options?: O)
-    constructor(dialogId?: string, optionsOrProperty?: O|string, options?: O) {
-        super();
-        this.outputProperty = 'dialog.lastResult';
-
-        // Process args
-        if (typeof optionsOrProperty === 'object') {
-            options = optionsOrProperty;
-            optionsOrProperty = undefined;
-        }
-        if (dialogId) { this.dialogId = dialogId }
-        if (typeof optionsOrProperty == 'string') { this.property = optionsOrProperty }
-        if (options) { this.options = options }
-    }
-
-    protected onComputeID(): string {
-        return `call[${this.hashedLabel(this.dialogId + ':' + this.bindingPath(false))}]`;
-    }
-
-    public configure(config: BeginDialogConfiguration): this {
-        return super.configure(config);
-    }
-
+export class BeginDialog extends Dialog {
     /**
      * ID of the dialog to call.
      */
     public dialogId: string;
 
     /**
-     * (Optional) static options to pass to the called dialog.
-     * 
-     * @remarks
-     * These options will be merged with any dynamic options configured as 
-     * [inputBindings](#inputbindings).
+     * (Optional) Computed options to pass called dialog.
      */
-    public options?: object;
+    public options: { [name: string]: ExpressionProperty<any>; } = {};
+
 
     /**
-     * (Optional) data binds the called dialogs input & output to the given property.
-     * 
-     * @remarks
-     * The bound properties current value will be passed to the called dialog as part of its 
-     * options and will be accessible within the dialog via `dialog.options.value`. The result
-     * returned from the called dialog will then be copied to the bound property.
+     * Creates a new `BeginDialog` instance.
+     * @param dialogId ID of the dialog to call.
+     * @param valueProperty (Optional) in-memory property to bind the dialogs input and output to.
      */
-    public set property(value: string) {
-        this.inputProperties['value'] = value;
+    constructor();
+    constructor(dialogId: string, valueProperty?: string)
+    constructor(dialogId?: string, valueProperty?: string) {
+        super();
+        this.inheritState = true;
+        if (dialogId) { this.dialogId = dialogId }
+        if (valueProperty) { this.valueProperty = valueProperty }
+    }
+
+    public set resultProperty(value: string) {
         this.outputProperty = value;
     }
 
-    public get property(): string {
-       return this.inputProperties['value']; 
+    public get resultProperty(): string {
+        return this.outputProperty;
     }
 
-    public async beginDialog(dc: DialogContext, options?: O): Promise<DialogTurnResult> {
-        options = Object.assign({}, options, this.options);
+    /**
+     * (Optional) in-memory property to bind the dialogs input and output to.
+     * 
+     * @remarks
+     * The called dialog will be able to access the passed in value via `dialog.value` or
+     * the shortcut of `$value`.
+     */
+    public set valueProperty(value: string) {
+        this.options['value'] = new ExpressionProperty(value);
+        this.resultProperty = value;
+    }
+
+    public get valueProperty(): string {
+       return this.options.hasOwnProperty('value') ? this.resultProperty : undefined; 
+    }
+
+    protected onComputeID(): string {
+        return `beginDialog[${this.hashedLabel(this.dialogId + ':' + this.bindingPath(false))}]`;
+    }
+
+    public addOption(name: string, value: ExpressionPropertyValue<any>): this {
+        if (this.options.hasOwnProperty(name)) { throw new Error(`${this.id}: an option named "${name}" has already been added.`) }
+        this.options[name] = new ExpressionProperty(value);
+        return this;
+    }
+
+    public configure(config: BeginDialogConfiguration): this {
+        for (const key in config) {
+            if (config.hasOwnProperty(key)) {
+                const value = config[key];
+                switch(key) {
+                    case 'options':
+                        if (Array.isArray(value)) {
+                            (value as NamedDialogOption[]).forEach(opt => this.addOption(opt.name, opt.value))
+                        }
+                        break;
+                    default:
+                        super.configure({ [key]: value });
+                        break;
+                }
+            }
+        }
+
+        return this;
+    }
+
+    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+        // Compute options and begin dialog
+        const options = BeginDialog.computeOptions(this.options, this.id, dc.state.toJSON());
         return await dc.beginDialog(this.dialogId, options);
+    }
+
+    static computeOptions(options: { [name:string]: ExpressionProperty<any>; }, stepId: string, memory: DialogContextVisibleState): object {
+        const output: object = {};
+        for (const name in options) {
+            if (options.hasOwnProperty(name)) {
+                output[name] = options[name].evaluate(stepId, memory);
+            }
+        }
+
+        return output;
     }
 }

@@ -1,11 +1,13 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogConfiguration, Dialog, DialogCommand, DialogContext } from 'botbuilder-dialogs';
+import { DialogTurnResult, DialogConfiguration, Dialog, DialogContext } from 'botbuilder-dialogs';
+import { NamedDialogOption, BeginDialog } from './beginDialog';
+import { ExpressionProperty, ExpressionPropertyValue } from '../expressionProperty';
 
 export interface ReplaceDialogConfiguration extends DialogConfiguration {
     /**
@@ -14,33 +16,12 @@ export interface ReplaceDialogConfiguration extends DialogConfiguration {
     dialogId: string;
 
     /**
-     * (Optional) static options to pass to the goto dialog.
-     * 
-     * @remarks
-     * These options will be merged with any dynamic options configured as 
-     * [inputProperties](#inputproperties).
+     * (Optional) list of computed options to pass called dialog.
      */
-    options?: object;
+    options?: NamedDialogOption[];
 }
 
-export class ReplaceDialog extends DialogCommand {
-
-    /**
-     * Creates a new `ReplaceWithDialog` instance.
-     * @param dialogId ID of the dialog to goto.
-     * @param options (Optional) static options to pass the dialog.
-     */
-    constructor();
-    constructor(dialogId: string, options?: object);
-    constructor(dialogId?: string, options?: object) {
-        super();
-        if (dialogId) { this.dialogId = dialogId }
-        if (options) { this.options = options }
-    }
-
-    protected onComputeID(): string {
-        return `replace[${this.hashedLabel(this.dialogId)}]`;
-    }
+export class ReplaceDialog extends Dialog {
 
     /**
      * ID of the dialog to goto.
@@ -48,20 +29,54 @@ export class ReplaceDialog extends DialogCommand {
     public dialogId: string;
 
     /**
-     * (Optional) static options to pass to the goto dialog.
-     * 
-     * @remarks
-     * These options will be merged with any dynamic options configured as 
-     * [inputProperties](#inputproperties).
+     * (Optional) Computed options to pass called dialog.
      */
-    public options?: object;
+    public options: { [name: string]: ExpressionProperty<any>; } = {};
 
-    public configure(config: ReplaceDialogConfiguration): this {
-        return super.configure(config);
+    /**
+     * Creates a new `ReplaceDialog` instance.
+     * @param dialogId ID of the dialog to goto.
+     */
+    constructor(dialogId?: string) {
+        super();
+        if (dialogId) { this.dialogId = dialogId }
     }
 
-    protected async onRunCommand(dc: DialogContext, options?: object): Promise<DialogTurnResult> {
-        options = Object.assign({}, options, this.options);
-        return await this.replaceParentDialog(dc, this.dialogId, options);
+    protected onComputeID(): string {
+        return `replaceDialog[${this.hashedLabel(this.dialogId)}]`;
+    }
+
+    public addOption(name: string, value: ExpressionPropertyValue<any>): this {
+        if (this.options.hasOwnProperty(name)) { throw new Error(`${this.id}: an option named "${name}" has already been added.`) }
+        this.options[name] = new ExpressionProperty(value);
+        return this;
+    }
+
+    public configure(config: ReplaceDialogConfiguration): this {
+        for (const key in config) {
+            if (config.hasOwnProperty(key)) {
+                const value = config[key];
+                switch(key) {
+                    case 'options':
+                        if (Array.isArray(value)) {
+                            (value as NamedDialogOption[]).forEach(opt => this.addOption(opt.name, opt.value))
+                        }
+                        break;
+                    default:
+                        super.configure({ [key]: value });
+                        break;
+                }
+            }
+        }
+
+        return this;
+    }
+
+    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+        if (!dc.parent) { throw new Error(`${this.id}: step should only ever be used within a container dialog.`) }
+
+        // Compute options and replace parent dialog
+        const options = BeginDialog.computeOptions(this.options, this.id, dc.state.toJSON());
+        return await dc.parent.replaceDialog(this.dialogId, options);
     }
 }
