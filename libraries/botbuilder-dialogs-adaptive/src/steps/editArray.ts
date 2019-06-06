@@ -1,18 +1,21 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogCommand, DialogContext, DialogConfiguration } from 'botbuilder-dialogs';
+import { DialogTurnResult, DialogContext, DialogConfiguration, Dialog } from 'botbuilder-dialogs';
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
 
 export interface EditArrayConfiguration extends DialogConfiguration {
     changeType?: ArrayChangeType;
 
     arrayProperty?: string;
     
-    itemProperty?: string;
+    resultProperty?: string;
+    
+    value?: ExpressionPropertyValue<any>;
 }
 
 export enum ArrayChangeType {
@@ -23,33 +26,66 @@ export enum ArrayChangeType {
     clear = 'clear'
 }
 
-export class EditArray extends DialogCommand {
+export class EditArray extends Dialog {
 
     constructor();
-    constructor(changeType: ArrayChangeType, arrayProperty: string, itemProperty?: string);
-    constructor(changeType?: ArrayChangeType, arrayProperty?: string, itemProperty?: string) {
+    constructor(changeType: ArrayChangeType, arrayProperty: string, valueOrResult?: ExpressionPropertyValue<any>|string);
+    constructor(changeType?: ArrayChangeType, arrayProperty?: string, valueOrResult?: ExpressionPropertyValue<any>|string) {
         super();
-        if (changeType) { this.changeType = changeType }
-        if (arrayProperty) { this.arrayProperty = arrayProperty }
-        if (itemProperty) { this.itemProperty = itemProperty }
+        this.inheritState = true;
+        if (changeType) { 
+            this.changeType = changeType;
+            this.arrayProperty = arrayProperty;
+            if (valueOrResult) {
+                switch (changeType) {
+                    case ArrayChangeType.clear:
+                    case ArrayChangeType.pop:
+                    case ArrayChangeType.take:
+                        if (typeof valueOrResult == 'string') {
+                            this.resultProperty = valueOrResult;
+                        }
+                        break;
+                    case ArrayChangeType.push:
+                    case ArrayChangeType.remove:
+                        this.value = new ExpressionProperty(valueOrResult);
+                        break; 
+                }
+            }
+        }
     }
     
     protected onComputeID(): string {
-        return `array[${this.hashedLabel(this.changeType + ': ' + this.arrayProperty)}]`;
+        return `editArray[${this.hashedLabel(this.changeType + ': ' + this.arrayProperty)}]`;
     }
 
     public changeType: ArrayChangeType;
 
     public arrayProperty: string;
+
+    public resultProperty?: string;
     
-    public itemProperty: string;
+    public value?: ExpressionProperty<any>;
 
     public configure(config: EditArrayConfiguration): this {
-        return super.configure(config);
+        for (const key in config) {
+            if (config.hasOwnProperty(key)) {
+                const value = config[key];
+                switch(key) {
+                    case 'value':
+                        this.value = new ExpressionProperty(value);
+                        break;
+                    default:
+                        super.configure({ [key]: value });
+                        break;
+                }
+            }
+        }
+
+        return this;
     }
 
-    protected async onRunCommand(dc: DialogContext, options: object): Promise<DialogTurnResult> {
-        if (!this.arrayProperty) { throw new Error(`EditArray: "${this.changeType}" operation couldn't be performed because the listProperty wasn't specified.`) }
+    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+        if (!this.arrayProperty) { throw new Error(`${this.id}: "${this.changeType}" operation couldn't be performed because the listProperty wasn't specified.`) }
 
         // Get list and ensure populated
         let list: any[] = dc.state.getValue(this.arrayProperty);
@@ -58,58 +94,50 @@ export class EditArray extends DialogCommand {
         // Manipulate list
         let item: any;
         let serialized: string;
-        let lastResult: any;
+        let result: any;
         switch (this.changeType) {
             case ArrayChangeType.pop:
                 item = list.pop();
-                if (this.itemProperty) {
-                    dc.state.setValue(this.itemProperty, item);
-                }
-                lastResult = item;
+                result = item;
                 break;
             case ArrayChangeType.push:
-                this.ensureItemProperty();
-                item = dc.state.getValue(this.itemProperty);
-                lastResult = item != undefined;
-                if (lastResult) {
+                this.ensureValue();
+                item = this.value.evaluate(this.id, dc.state.toJSON());
+                if (item !== undefined) {
                     list.push(item);
                 }
                 break;
             case ArrayChangeType.take:
                 item = list.shift();
-                if (this.itemProperty) {
-                    dc.state.setValue(this.itemProperty, item);
-                }
-                lastResult = item;
+                result = item;
                 break;
             case ArrayChangeType.remove:
-                this.ensureItemProperty();
-                item = dc.state.getValue(this.itemProperty);
+                this.ensureValue();
+                item = this.value.evaluate(this.id, dc.state.toJSON());
                 if (item != undefined) {
                     serialized = Array.isArray(item) || typeof item == 'object' ? JSON.stringify(item) : undefined;
-                    lastResult = false;
+                    result = false;
                     for (let i = 0; i < list.length; i++) {
                         if ((serialized && JSON.stringify(list[i]) == serialized) || item === list[i]) {
                             list.splice(i, 1);
-                            lastResult = true;
+                            result = true;
                             break;
                         } 
                     }
                 }
                 break;
             case ArrayChangeType.clear:
-                lastResult = list.length > 0;
+                result = list.length > 0;
                 list = [];
                 break;
         }
 
-        // Save list and last result
+        // Save list
         dc.state.setValue(this.arrayProperty, list);
-        dc.state.setValue('dialog.lastResult', lastResult);
         return await dc.endDialog();
     }
 
-    private ensureItemProperty(): void {
-        if (!this.itemProperty) { throw new Error(`EditArray: "${this.changeType}" operation couldn't be performed for list "${this.arrayProperty}" because an itemProperty wasn't specified.`) }
+    private ensureValue(): void {
+        if (!this.value) { throw new Error(`${this.id}: "${this.changeType}" operation couldn't be performed for list "${this.arrayProperty}" because a value wasn't specified.`) }
     }
 }
