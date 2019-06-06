@@ -1,11 +1,11 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogCommand, DialogTurnResult, Dialog, DialogConfiguration } from 'botbuilder-dialogs';
+import { DialogTurnResult, Dialog, DialogConfiguration } from 'botbuilder-dialogs';
 import { StepChangeType, SequenceContext, StepChangeList, StepState } from '../sequenceContext';
 
 export interface EditStepsConfiguration extends DialogConfiguration {
@@ -25,7 +25,7 @@ export interface EditStepsConfiguration extends DialogConfiguration {
     tags?: string[];
 }
 
-export class EditSteps extends DialogCommand {
+export class EditSteps extends Dialog {
     /**
      * The type of change to make to the dialogs list of steps.
      */
@@ -50,6 +50,7 @@ export class EditSteps extends DialogCommand {
     constructor(changeType: StepChangeType, steps: Dialog[], tags?: string[]);
     constructor(changeType?: StepChangeType, steps?: Dialog[], tags?: string[]) {
         super();
+        this.inheritState = true;
         if (changeType !== undefined) { this.changeType = changeType }
         if (Array.isArray(steps)) { this.steps = steps }
         if (Array.isArray(tags)) { this.tags = tags }
@@ -67,7 +68,7 @@ export class EditSteps extends DialogCommand {
         return this.steps;
     }
 
-    protected async onRunCommand(sequence: SequenceContext, options: object): Promise<DialogTurnResult> {
+    public async beginDialog(sequence: SequenceContext): Promise<DialogTurnResult> {
         // Ensure planning context and condition
         if (!(sequence instanceof SequenceContext)) { throw new Error(`${this.id}: should only be used within a planning or sequence dialog.`) }
         if (this.changeType == undefined) { throw new Error(`${this.id}: no 'changeType' specified.`) }

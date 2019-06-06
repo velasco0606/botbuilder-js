@@ -1,11 +1,11 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogCommand, DialogTurnResult, Dialog, DialogConfiguration } from 'botbuilder-dialogs';
+import { DialogTurnResult, Dialog, DialogConfiguration } from 'botbuilder-dialogs';
 import { SequenceContext, StepState, StepChangeType } from '../sequenceContext';
 import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
 
@@ -26,7 +26,7 @@ export interface IfConditionConfiguration extends DialogConfiguration {
     elseSteps?: Dialog[];
 }
 
-export class IfCondition extends DialogCommand {
+export class IfCondition extends Dialog {
     /**
      * The conditional expression to evaluate.
      */
@@ -85,7 +85,7 @@ export class IfCondition extends DialogCommand {
         return this;
     }
 
-    protected async onRunCommand(sequence: SequenceContext, options: object): Promise<DialogTurnResult> {
+    public async beginDialog(sequence: SequenceContext): Promise<DialogTurnResult> {
         // Ensure planning context and condition
         if (!(sequence instanceof SequenceContext)) { throw new Error(`${this.id}: should only be used within an AdaptiveDialog.`) }
         if (!this.condition) { throw new Error(`${this.id}: no conditional expression specified.`) }
@@ -102,8 +102,7 @@ export class IfCondition extends DialogCommand {
             const steps = triggered.map((step) => {
                 return {
                     dialogStack: [],
-                    dialogId: step.id,
-                    options: options
+                    dialogId: step.id
                 } as StepState
             });
             await sequence.queueChanges({ changeType: StepChangeType.insertSteps, steps: steps });

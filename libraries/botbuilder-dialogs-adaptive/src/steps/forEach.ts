@@ -1,11 +1,11 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogCommand, DialogTurnResult, Dialog, DialogConfiguration } from 'botbuilder-dialogs';
+import { DialogTurnResult, Dialog, DialogConfiguration } from 'botbuilder-dialogs';
 import { SequenceContext, StepChangeList, StepChangeType } from '../sequenceContext';
 import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
 
@@ -42,7 +42,7 @@ export interface ForEachConfiguration extends DialogConfiguration {
  * to `dialog.item`. The loop can be exited early by including either a `EndDialog` or `GotoDialog` 
  * step.
  */
-export class ForEach extends DialogCommand {
+export class ForEach extends Dialog {
 
     /**
      * Creates a new `ForEach` instance.
@@ -53,6 +53,7 @@ export class ForEach extends DialogCommand {
     constructor(list: ExpressionPropertyValue<any[]|object>, steps: Dialog[]);
     constructor(list?: ExpressionPropertyValue<any[]|object>, steps?: Dialog[]) {
         super();
+        this.inheritState = true;
         if (list) { this.list = new ExpressionProperty(list) }
         if (steps) { this.steps = steps } 
     }
@@ -104,7 +105,7 @@ export class ForEach extends DialogCommand {
         return this.steps;
     }
 
-    protected async onRunCommand(sequence: SequenceContext, options: ForEachOptions): Promise<DialogTurnResult> {
+    public async beginDialog(sequence: SequenceContext, options: ForEachOptions): Promise<DialogTurnResult> {
         // Ensure planning context
         if (!(sequence instanceof SequenceContext)) { throw new Error(`${this.id}: should only be used within an AdaptiveDialog.`) }
         if (!this.list) { throw new Error(`${this.id}: no list expression specified.`) }

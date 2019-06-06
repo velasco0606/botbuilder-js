@@ -1,11 +1,11 @@
 /**
- * @module botbuilder-planning
+ * @module botbuilder-dialogs-adaptive
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogConfiguration, Dialog, DialogCommand, DialogContext } from 'botbuilder-dialogs';
+import { DialogTurnResult, DialogConfiguration, Dialog, DialogContext } from 'botbuilder-dialogs';
 import { Activity, InputHints } from 'botbuilder-core';
 import { ActivityProperty } from '../activityProperty';
 
@@ -34,7 +34,12 @@ export interface SendActivityConfiguration extends DialogConfiguration {
     resultProperty?: string;
 }
 
-export class SendActivity extends DialogCommand {
+export class SendActivity extends Dialog {
+
+    /**
+     * Activity to send the user.
+     */
+    public activity = new ActivityProperty();
 
     /**
      * Creates a new `SendActivity` instance.
@@ -46,19 +51,15 @@ export class SendActivity extends DialogCommand {
     constructor(activityOrText: Partial<Activity>|string, speak?: string, inputHint?: InputHints);
     constructor(activityOrText?: Partial<Activity>|string, speak?: string, inputHint?: InputHints) {
         super();
+        this.inheritState = true;
         if (activityOrText) { this.activity.value = activityOrText }
         if (speak) { this.activity.speak = speak }
         this.activity.inputHint = inputHint || InputHints.AcceptingInput;
     }
 
     protected onComputeID(): string {
-        return `send[${this.hashedLabel(this.activity.displayLabel)}]`;
+        return `sendActivity[${this.hashedLabel(this.activity.displayLabel)}]`;
     }
-
-    /**
-     * Activity to send the user.
-     */
-    public activity = new ActivityProperty();
 
     /**
      * (Optional) in-memory state property that the result of the send should be saved to.
@@ -78,18 +79,11 @@ export class SendActivity extends DialogCommand {
         return super.configure(config);
     }
     
-    protected async onRunCommand(dc: DialogContext, options: object): Promise<DialogTurnResult> {
-        if (!this.activity.hasValue()) {
-            throw new Error(`SendActivity: no activity assigned for step '${this.id}'.`) 
-        } 
+    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+        if (!this.activity.hasValue()) { throw new Error(`${this.id}: no activity assigned.`) } 
 
         // Send activity and return result
-        // - If `resultProperty` has been set, the returned result will be saved to the requested
-        //   memory location.
-        const data = Object.assign({
-            utterance: dc.context.activity.text || ''
-        }, dc.state.toJSON(),  options);
-        const activity = this.activity.format(dc, data);
+        const activity = this.activity.format(dc, dc.state.toJSON());
         const result = await dc.context.sendActivity(activity);
         return await dc.endDialog(result);
     }
