@@ -79,6 +79,13 @@ export class ExpressionType {
     public static readonly GetTimeOfDay: string = 'getTimeOfDay';
     public static readonly GetFutureTime: string = 'getFutureTime';
     public static readonly GetPastTime: string = 'getPastTime';
+    public static readonly ConvertFromUTC: string = 'convertFromUTC';
+    public static readonly ConvertToUTC: string = 'convertToUTC';
+    public static readonly AddToTime: string = 'addToTime';
+    public static readonly StartOfDay: string = 'startOfDay';
+    public static readonly StartOfHour: string = 'startOfHour';
+    public static readonly StartOfMonth: string = 'startOfMonth';
+    public static readonly Ticks: string = 'ticks';
 
     // Conversions
     public static readonly Float: string = 'float';
@@ -90,7 +97,7 @@ export class ExpressionType {
     public static readonly DataUri: string = 'dataUri';
     public static readonly DataUriToBinary: string = 'dataUriToBinary';
     public static readonly DataUriToString: string = 'dataUriToString';
-    public static readonly DecodeUriComponent: string = 'decodeUriComponent';
+    public static readonly UriComponentToString: string = 'uriComponentToString';
     public static readonly Base64: string = 'base64';
     public static readonly Base64ToBinary: string = 'base64ToBinary';
     public static readonly Base64ToString: string = 'base64ToString';
@@ -104,6 +111,8 @@ export class ExpressionType {
     public static readonly First: string = 'first';
     public static readonly Last: string = 'last';
     public static readonly Foreach: string = 'foreach';
+    public static readonly Select: string = 'select';
+    public static readonly Where: string = 'where';
     public static readonly Union: string = 'union';
     public static readonly Intersection: string = 'intersection';
     public static readonly Skip: string = 'skip';
@@ -123,5 +132,26 @@ export class ExpressionType {
     public static readonly RemoveProperty: string = 'removeProperty';
     public static readonly SetProperty: string = 'setProperty';
     public static readonly GetProperty: string = 'getProperty';
+    public static readonly Coalesce: string = 'coalesce';
+    public static readonly XPath: string = 'xPath';
 
+    // URI parsing functions
+    public static readonly UriHost: string = 'uriHost';
+    public static readonly UriPath: string = 'uriPath';
+    public static readonly UriPathAndQuery: string = 'uriPathAndQuery';
+    public static readonly UriPort: string = 'uriPort';
+    public static readonly UriQuery: string = 'uriQuery';
+    public static readonly UriScheme: string = 'uriScheme';
+
+    // Regar expression
+    public static readonly IsMatch: string = 'isMatch';
+
+    // Short hand functions
+    public static readonly Intent: string = 'intent';
+    public static readonly Entity: string = 'entity';
+    public static readonly Dialog: string = 'dialog';
+    public static readonly SimpleEntity: string = 'simpleEntity';
+    public static readonly Instance: string = 'instance';
+    public static readonly Option: string = 'option';
+    public static readonly Callstack: string = 'callstack';
 }

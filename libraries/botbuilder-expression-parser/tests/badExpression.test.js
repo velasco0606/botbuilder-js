@@ -18,6 +18,7 @@ const badExpressions =
   "a.func()", // no such function
   "(1.foreach)()",// error func
   "('str'.foreach)()",// error func
+  "'hello'.length()",// not support currently
 
   // Operators test
   "'1' + 2", // params should be number
@@ -102,36 +103,36 @@ const badExpressions =
   "array()", // should have 1 param
   "array(hello, world)", // should have 1 param
   "array(false)", // param should be string
-  "Binary()", // should have 1 param
-  "Binary(hello, world)", // should have 1 param
-  "Binary(false)", // param should be string
-  "DataUri()", // should have 1 param
-  "DataUri(hello, world)", // should have 1 param
-  "DataUri(false)", // param should be string
-  "DataUriToBinary()", // should have 1 param
-  "DataUriToBinary(hello, world)", // should have 1 param
-  "DataUriToBinary(false)", // param should be string
-  "DataUriToString()", // should have 1 param
-  "DataUriToString(hello, world)", // should have 1 param
-  "DataUriToString(false)", // param should be string
-  "DecodeUriComponent()", // should have 1 param
-  "DecodeUriComponent(hello, world)", // should have 1 param
-  "DecodeUriComponent(false)", // param should be string
-  "Base64()", // should have 1 param
-  "Base64(hello, world)", // should have 1 param
-  "Base64(false)", // param should be string
-  "Base64ToBinary()", // should have 1 param
-  "Base64ToBinary(hello, world)", // should have 1 param
-  "Base64ToBinary(false)", // param should be string
-  "Base64ToString()", // should have 1 param
-  "Base64ToString(hello, world)", // should have 1 param
-  "Base64ToString(false)", // param should be string
-  "UriComponent()", // should have 1 param
-  "UriComponent(hello, world)", // should have 1 param
-  "UriComponent(false)", // param should be string
-  "Xml()", // should have 1 param
-  "Xml(hello, world)", // should have 1 param
-  "Xml(false)", // param should be string
+  "binary()", // should have 1 param
+  "binary(hello, world)", // should have 1 param
+  "binary(false)", // param should be string
+  "dataUri()", // should have 1 param
+  "dataUri(hello, world)", // should have 1 param
+  "dataUri(false)", // param should be string
+  "dataUriToBinary()", // should have 1 param
+  "dataUriToBinary(hello, world)", // should have 1 param
+  "dataUriToBinary(false)", // param should be string
+  "dataUriToString()", // should have 1 param
+  "dataUriToString(hello, world)", // should have 1 param
+  "dataUriToString(false)", // param should be string
+  "uriComponentToString()", // should have 1 param
+  "uriComponentToString(hello, world)", // should have 1 param
+  "uriComponentToString(false)", // param should be string
+  "base64()", // should have 1 param
+  "base64(hello, world)", // should have 1 param
+  "base64(false)", // param should be string
+  "base64ToBinary()", // should have 1 param
+  "base64ToBinary(hello, world)", // should have 1 param
+  "base64ToBinary(false)", // param should be string
+  "base64ToString()", // should have 1 param
+  "base64ToString(hello, world)", // should have 1 param
+  "base64ToString(false)", // param should be string
+  "uriComponent()", // should have 1 param
+  "uriComponent(hello, world)", // should have 1 param
+  "uriComponent(false)", // param should be string
+  "xml()", // should have 1 param
+  "xml(hello, world)", // should have 1 param
+  "xml(false)", // param should be string
 
   // Math functions test
   "max(hello, one)", // param should be number
@@ -171,42 +172,58 @@ const badExpressions =
   "addDays(timestamp, 'hi')",// second param should be integer
   "addDays(timestamp)",// should have 2 or 3 params
   "addDays(timestamp, 1,'yyyy', 2)",// should have 2 or 3 params
+  "addDays(notISOTimestamp, 1)", // not ISO datetime format
   "addHours('errortime', 1)",// error datetime format
   "addHours(timestamp, 'hi')",// second param should be integer
   "addHours(timestamp)",// should have 2 or 3 params
   "addHours(timestamp, 1,'yyyy', 2)",// should have 2 or 3 params
+  "addHours(notISOTimestamp, 1)", // not ISO datetime format
   "addMinutes('errortime', 1)",// error datetime format
   "addMinutes(timestamp, 'hi')",// second param should be integer
   "addMinutes(timestamp)",// should have 2 or 3 params
   "addMinutes(timestamp, 1,'yyyy', 2)",// should have 2 or 3 params
+  "addMinutes(notISOTimestamp, 1)", // not ISO datetime format
   "addSeconds('errortime', 1)",// error datetime format
   "addSeconds(timestamp, 'hi')",// second param should be integer
   "addSeconds(timestamp)",// should have 2 or 3 params
   "addSeconds(timestamp, 1,'yyyy', 2)",// should have 2 or 3 params
+  "addSeconds(notISOTimestamp, 1)", // not ISO datetime format
   "dayOfMonth('errortime')", // error datetime format
   "dayOfMonth(timestamp, 1)", //should have 1 param
+  "dayOfMonth(notISOTimestamp)", // not ISO datetime format
   "dayOfWeek('errortime')", // error datetime format
   "dayOfWeek(timestamp, 1)", //should have 1 param
+  "dayOfWeek(notISOTimestamp)", // not ISO datetime format
   "dayOfYear('errortime')", // error datetime format
   "dayOfYear(timestamp, 1)", //should have 1 param
+  "dayOfYear(notISOTimestamp)", // not ISO datetime format
   "month('errortime')", // error datetime format
   "month(timestamp, 1)", //should have 1 param
+  "month(noISOTimestamp)", // not ISO datetime format
   "date('errortime')", // error datetime format
   "date(timestamp, 1)", //should have 1 param
+  "date(noISOTimestamp)", // not ISO datetime format
   "year('errortime')", // error datetime format
   "year(timestamp, 1)", // should have 1 param
+  "year(noISOTimestamp)", // not ISO datetime format
   "formatDateTime('errortime')", // error datetime format
   "formatDateTime(timestamp, 'yyyy', 1)", // should have 2 or 3 params
-  "subtractFromTime('errortime', 'yyyy', 1)", // error datetime format
+  "formatDateTime(notValidTimestamp)", // not valid timestamp
+  "formatDateTime(notValidTimestamp2)", // not valid timestamp
+  "formatDateTime(notValidTimestamp3)", // not valid timestamp
+  "subtractFromTime('errortime', 1, 'yyyy')", // error datetime format
   "subtractFromTime(timestamp, 1, 'W')", // error time unit
   "subtractFromTime(timestamp, timestamp, 'W')", // error parameters format
-  "subtractFromTime(timestamp, 'yyyy', '1')", // third param should be integer
-  "subtractFromTime(timestamp, 'yyyy')", // should have 3 or4 params
+  "subtractFromTime(timestamp, '1', 'yyyy')", // second param should be integer
+  "subtractFromTime(timestamp, 'yyyy')", // should have 3 or 4 params
+  "subtractFromTime(noISOTimestamp, 1, 'Year')", 
   "dateReadBack('errortime', 'errortime')", // error datetime format
   "dateReadBack(timestamp)", // shold have two params
   "dateReadBack(timestamp, 'errortime')", // second param is invalid timestamp format
+  "dateReadBack(notISOTimestamp, addDays(timestamp, 1))", // not ISO datetime format
   "getTimeOfDay('errortime')", // error datetime format
   "getTimeOfDay(timestamp, timestamp)", // should have 1 param
+  "getTimeOfDay(notISOTimestamp)", // not ISO datetime format
   "getPastTime(1, 'W')",// error time unit
   "getPastTime(timestamp, 'W')",// error parameters format
   "getPastTime('yyyy', '1')",// second param should be integer
@@ -215,7 +232,21 @@ const badExpressions =
   "getFutureTime(timestamp, 'W')",// error parameters format
   "getFutureTime('yyyy', '1')",// second param should be integer
   "getFutureTime('yyyy')",// should have 2 or 3 params
+  "convertFromUTC(notValidTimestamp, 'Pacific Standard Time')", // invalid timestamp
+  "convertFromUTC('2018-02-02T02:00:00.000Z', 'Pacific Time')", // invalid timezone
+  "convertToUTC(notValidTimestamp, 'Pacific Standard Time')",  // invalid timestamp
+  "convertToUTC('2018-02-02T02:00:00.000', 'Pacific Time')", // invalid timezone
+  "startOfDay(timeStamp, 'A')", // invalid format
+  "startOfDay(notValidTimeStamp)", // invalid timestamp
+  "startOfHour(timeStamp, 'A')", // invalid format
+  "startOfHour(notValidTimeStamp)", // invalid timestamp
+  "startOfMonth(timeStamp, 'A')", // invalid format
+  "startOfMonth(notValidTimeStamp)", // invalid timestamp
+  "ticks(notValidTimeStamp)", // not valid timestamp
+  "ticks()", // should have one parameters
 
+
+  
   // collection functions test
   "sum(items, 'hello')",//should have 1 parameter
   "sum('hello')",//first param should be list
@@ -239,10 +270,22 @@ const badExpressions =
   "foreach(items, add(1), item)",// Second paramter of foreach is not an identifier
   "foreach(items, 1, item)", // Second paramter error
   "foreach(items, x, sum(x))", // third paramter error
-  "union(one, two)",// should have collection param
-  "intersection(one, two)",// should have collection param
+  "select(hello, item, item)", // first arg is not list
+  "select(items, item)", // should have three parameters
+  "select(items, item, item2, item3)", // should have three parameters
+  "select(items, add(1), item)", // second paramter of foreach is not an identifier
+  "select(items, 1, item)", // second paramter error
+  "select(items, x, sum(x))", // third paramter error
+  "where(hello, item, item)", // first arg is not list
+  "where(items, item)", //should have three parameters
+  "where(items, item, item2, item3)", //should have three parameters
+  "where(items, add(1), item)", // Second paramter of where is not an identifier
+  "where(items, 1, item)", // Second paramter error
+  "where(items, x, sum(x))", // third paramter error
+  "union(one, two)", // should have collection param
+  "intersection(one, two)", // should have collection param
   "skip(hello)", // should have two parameters
-  "skip(hello, world, one)", //should have two parameters
+  "skip(hello, world, one)", // should have two parameters
   "skip(hello, one)", // first param should be array
   "skip(items, hello)", // second param should be integer
   "skip(items, one + 0.5)", // second param should be integer
@@ -257,6 +300,14 @@ const badExpressions =
   "subArray(items, hello)", // second param should be integer
   "subArray(items, one, hello)", // third param should be integer
 
+  //uri parsing functions
+  "uriHost(relativeUri)", 
+  "uriPath(relativeUri)",
+  "uriPathAndQuery(relatibeUri)",
+  "uriPort(relatibeUri)",
+  "uriQuery(relatibeUri)",
+  "uriScheme(relatibeUri)",
+
   // Object manipulation and construction functions test
   "json(1,2)", //should have 1 parameter
   "json(1)",//should be string parameter
@@ -267,6 +318,10 @@ const badExpressions =
   "setProperty(json('{\"key1\":\"value1\"}'), 1,'value2')", // second param should be string
   "removeProperty(json('{\"key1\":\"value1\",\"key2\":\"value2\"}'), 1))",// second param should be string
   "removeProperty(json('{\"key1\":\"value1\",\"key2\":\"value2\"}'), '1', '2'))",// should have 2 parameter
+  "coalesce()", // should have at least 1 parameter
+  "xPath(invalidXml, ''sum(/produce/item/count)')", //not valid xml
+  "xPath(xmlStr)", // should have two params
+  "xPath(xmlStr, 'getTotal')", // invalid xpath query
 
   // Memory access test
   "getProperty(bag, 1)",// second param should be string
@@ -275,6 +330,12 @@ const badExpressions =
   "one[0]",  // one is not list
   "items[3]", // index out of range
   "items[one+0.5]", // index is not integer
+
+  // regex test
+  "isMatch('^[a-z]+$')",// should have 2 parameter
+  "isMatch('abC', one)",// second param should be string
+  "isMatch(1, '^[a-z]+$')", // first param should be string
+  "isMatch('abC', '^[a-z+$')",// bad regular expression
 ];
 
 const scope = {
@@ -301,7 +362,12 @@ const scope = {
       { x: 2 },
       { x: 3 },
     ],
-  timestamp: "2018-03-15T13:00:00Z",
+  timestamp: "2018-03-15T13:00:00.111Z",
+  noISOTimestamp: "2018-03-15T13:00:00Z",
+  notValidTimestamp: "2018timestmap",
+  notValidTimestamp2: "1521118800",
+  notValidTimestamp3: "20181115",
+  relativeUri: "../catalog/shownew.htm?date=today",
   turn:
   {
     entities:

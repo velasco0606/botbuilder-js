@@ -5,7 +5,7 @@ const moment = require('moment');
 
 const one = ["one"];
 const oneTwo = ["one", "two"];
-
+const nullObj = undefined;
 const dataSource = [
   // Operators tests
   ["1 + 2", 3],
@@ -109,10 +109,10 @@ const dataSource = [
   ["addOrdinal(11 + 13)", "24th"],
   ["addOrdinal(-1)", "-1"],//original string value
   ["count(guid())", 36],
-  ["guid().indexOf('-')", 8],
+  ["indexOf(guid(), '-')", 8],
   ["indexOf(guid(), '-')", 8],
   ["indexOf(hello, '-')", -1],
-  ["guid().lastIndexOf('-')", 23],
+  ["lastIndexOf(guid(), '-')", 23],
   ["lastIndexOf(guid(), '-')", 23],
   ["lastIndexOf(hello, '-')", -1],
 
@@ -202,7 +202,7 @@ const dataSource = [
   ["dataUri(hello)", 'data:text/plain;charset=utf-8;base64,aGVsbG8='],
   ["dataUriToBinary(dataUri(hello))", '011001000110000101110100011000010011101001110100011001010111100001110100001011110111000001101100011000010110100101101110001110110110001101101000011000010111001001110011011001010111010000111101011101010111010001100110001011010011100000111011011000100110000101110011011001010011011000110100001011000110000101000111010101100111001101100010010001110011100000111101'],
   ["dataUriToString(dataUri(hello))", 'hello'],
-  ["decodeUriComponent('http%3A%2F%2Fcontoso.com')", 'http://contoso.com'],
+  ["uriComponentToString('http%3A%2F%2Fcontoso.com')", 'http://contoso.com'],
   ["base64(hello)", 'aGVsbG8='],
   ["base64ToBinary(base64(hello))", '0110000101000111010101100111001101100010010001110011100000111101'],
   ["base64ToString(base64(hello))", 'hello'],
@@ -235,14 +235,17 @@ const dataSource = [
   ["rand(2, 3)", 2],
 
   // Date and time function tests
-  // Init dateTime: 2018-03-15T13:00:00Z
-  ["addDays(timestamp, 1)", "2018-03-16T13:00:00.0000000Z"],
+  // All the timestamp strings passed in must be in ISO format of YYYY-MM-DDTHH:mm:ss.sssZ
+  // Otherwise exceptions will be thrown out
+  // All the output timestamp strings are in ISO format of YYYY-MM-DDTHH:mm:ss.sssZ
+  // Init dateTime: 2018-03-15T13:00:00:111Z
+  ["addDays(timestamp, 1)", "2018-03-16T13:00:00.111Z"],
   ["addDays(timestamp, 1,'MM-dd-yy')", "03-16-18"],
-  ["addHours(timestamp, 1)", "2018-03-15T14:00:00.0000000Z"],
+  ["addHours(timestamp, 1)", "2018-03-15T14:00:00.111Z"],
   ["addHours(timestamp, 1,'MM-dd-yy hh-mm')", "03-15-18 02-00"],
-  ["addMinutes(timestamp, 1)", "2018-03-15T13:01:00.0000000Z"],
+  ["addMinutes(timestamp, 1)", "2018-03-15T13:01:00.111Z"],
   ["addMinutes(timestamp, 1, 'MM-dd-yy hh-mm')", "03-15-18 01-01"],
-  ["addSeconds(timestamp, 1)", "2018-03-15T13:00:01.0000000Z"],
+  ["addSeconds(timestamp, 1)", "2018-03-15T13:00:01.111Z"],
   ["addSeconds(timestamp, 1, 'MM-dd-yy hh-mm-ss')", "03-15-18 01-00-01"],
   ["dayOfMonth(timestamp)", 15],
   ["dayOfWeek(timestamp)", 4],//Thursday
@@ -250,24 +253,29 @@ const dataSource = [
   ["month(timestamp)", 3],
   ["date(timestamp)", "3/15/2018"],//Default. TODO
   ["year(timestamp)", 2018],
-  ["formatDateTime(timestamp)", "2018-03-15T13:00:00.0000000Z"],
-  ["formatDateTime(timestamp, 'MM-dd-yy')", "03-15-18"],
-  ["subtractFromTime(timestamp, 1, 'Year')", "2017-03-15T13:00:00.0000000Z"],
-  ["subtractFromTime(timestamp, 1, 'Month')", "2018-02-15T13:00:00.0000000Z"],
-  ["subtractFromTime(timestamp, 1, 'Week')", "2018-03-08T13:00:00.0000000Z"],
-  ["subtractFromTime(timestamp, 1, 'Day')", "2018-03-14T13:00:00.0000000Z"],
-  ["subtractFromTime(timestamp, 1, 'Hour')", "2018-03-15T12:00:00.0000000Z"],
-  ["subtractFromTime(timestamp, 1, 'Minute')", "2018-03-15T12:59:00.0000000Z"],
-  ["subtractFromTime(timestamp, 1, 'Second')", "2018-03-15T12:59:59.0000000Z"],
+  ["length(utcNow())", 24],
+  ["utcNow('MM-DD-YY')", moment(new Date().toISOString()).format('MM-DD-YY')],
+  ["formatDateTime(notISOTimestamp)", "2018-03-15T13:00:00.000Z"],
+  ["formatDateTime(notISOTimestamp, 'MM-dd-yy')", "03-15-18"],
+  ["formatDateTime('2018-03-15')", "2018-03-15T00:00:00.000Z"],
+  ["formatDateTime(timestampObj)", "2018-03-15T13:00:00.000Z"],
+  ["formatDateTime(unixTimestamp)", "2018-03-15T13:00:00.000Z"],
+  ["subtractFromTime(timestamp, 1, 'Year')", "2017-03-15T13:00:00.111Z"],
+  ["subtractFromTime(timestamp, 1, 'Month')", "2018-02-15T13:00:00.111Z"],
+  ["subtractFromTime(timestamp, 1, 'Week')", "2018-03-08T13:00:00.111Z"],
+  ["subtractFromTime(timestamp, 1, 'Day')", "2018-03-14T13:00:00.111Z"],
+  ["subtractFromTime(timestamp, 1, 'Hour')", "2018-03-15T12:00:00.111Z"],
+  ["subtractFromTime(timestamp, 1, 'Minute')", "2018-03-15T12:59:00.111Z"],
+  ["subtractFromTime(timestamp, 1, 'Second')", "2018-03-15T12:59:59.111Z"],
   ["dateReadBack(timestamp, addDays(timestamp, 1))", "tomorrow"],
   ["dateReadBack(addDays(timestamp, 1),timestamp))", "yesterday"],
-  ["getTimeOfDay('2018-03-15T00:00:00Z')", "midnight"],
-  ["getTimeOfDay('2018-03-15T08:00:00Z')", "morning"],
-  ["getTimeOfDay('2018-03-15T12:00:00Z')", "noon"],
-  ["getTimeOfDay('2018-03-15T13:00:00Z')", "afternoon"],
-  ["getTimeOfDay('2018-03-15T18:00:00Z')", "evening"],
-  ["getTimeOfDay('2018-03-15T22:00:00Z')", "evening"],
-  ["getTimeOfDay('2018-03-15T23:00:00Z')", "night"],
+  ["getTimeOfDay('2018-03-15T00:00:00.000Z')", "midnight"],
+  ["getTimeOfDay('2018-03-15T08:00:00.000Z')", "morning"],
+  ["getTimeOfDay('2018-03-15T12:00:00.000Z')", "noon"],
+  ["getTimeOfDay('2018-03-15T13:00:00.000Z')", "afternoon"],
+  ["getTimeOfDay('2018-03-15T18:00:00.000Z')", "evening"],
+  ["getTimeOfDay('2018-03-15T22:00:00.000Z')", "evening"],
+  ["getTimeOfDay('2018-03-15T23:00:00.000Z')", "night"],
   ["getPastTime(1, 'Year', 'MM-dd-yy')", moment(new Date().toISOString()).subtract(1, 'years').format('MM-DD-YY')],
   ["getPastTime(1, 'Month', 'MM-dd-yy')", moment(new Date().toISOString()).subtract(1, 'months').format('MM-DD-YY')],
   ["getPastTime(1, 'Week', 'MM-dd-yy')", moment(new Date().toISOString()).subtract(7, 'days').format('MM-DD-YY')],
@@ -276,6 +284,25 @@ const dataSource = [
   ["getFutureTime(1, 'Month', 'MM-dd-yy')", moment(new Date().toISOString()).add(1, 'months').format('MM-DD-YY')],
   ["getFutureTime(1, 'Week', 'MM-dd-yy')", moment(new Date().toISOString()).add(7, 'days').format('MM-DD-YY')],
   ["getFutureTime(1, 'Day', 'MM-dd-yy')", moment(new Date().toISOString()).add(1, 'days').format('MM-DD-YY')],
+  ["addToTime('2018-01-01T08:00:00.000Z', 1, 'Day')", "2018-01-02T08:00:00.000+00:00"],
+  ["addToTime('2018-01-01T08:00:00.000Z', sub(3,1), 'Week')", "2018-01-15T08:00:00.000+00:00"],
+  ["addToTime('2018-01-01T08:00:00.000Z', 1, 'Month', 'MM-DD-YY')", "02-01-18"],
+  ["convertFromUTC('2018-02-02T02:00:00.000Z', 'Pacific Standard Time')", "2018-02-01T18:00:00.000-08:00"],
+  ["convertFromUTC('2018-02-02T02:00:00.000Z', 'Pacific Standard Time', 'MM-DD-YY')", "02-01-18"],
+  ["convertToUTC('2018-01-01T18:00:00.000', 'Pacific Standard Time')", "2018-01-02T02:00:00.000+00:00"],
+  ["convertToUTC('2018-01-01T18:00:00.000', 'Pacific Standard Time', 'MM-DD-YY')", "01-02-18"],
+  ["startOfDay('2018-03-15T13:30:30.000Z')", "2018-03-15T00:00:00.000+00:00"],
+  ["startOfHour('2018-03-15T13:30:30.000Z')", "2018-03-15T13:00:00.000+00:00"],
+  ["startOfMonth('2018-03-15T13:30:30.000Z')", "2018-03-01T00:00:00.000+00:00"],
+  ["ticks('2018-01-01T08:00:00.000Z')", 636503904000000000],
+
+  //URI parsing functions tests
+  ["uriHost('https://www.localhost.com:8080')", "www.localhost.com"],
+  ["uriPath('http://www.contoso.com/catalog/shownew.htm?date=today')", "/catalog/shownew.htm"],
+  ["uriPathAndQuery('http://www.contoso.com/catalog/shownew.htm?date=today')", "/catalog/shownew.htm?date=today"],
+  ["uriPort('http://www.localhost:8080')", 8080],
+  ["uriQuery('http://www.contoso.com/catalog/shownew.htm?date=today')", "?date=today"],
+  ["uriScheme('http://www.contoso.com/catalog/shownew.htm?date=today')", "http"],
 
   // Collection functions tests
   ["sum(createArray(1, 2))", 3],
@@ -304,6 +331,11 @@ const dataSource = [
   ["join(foreach(items, item, item), ',')", "zero,one,two"],
   ["join(foreach(nestedItems, i, i.x + first(nestedItems).x), ',')", "2,3,4", ["nestedItems"]],
   ["join(foreach(items, item, concat(item, string(count(items)))), ',')", "zero3,one3,two3", ["items"]],
+  ["join(select(items, item, item), ',')", "zero,one,two"],
+  ["join(select(nestedItems, i, i.x + first(nestedItems).x), ',')", "2,3,4", ["nestedItems"]],
+  ["join(select(items, item, concat(item, string(count(items)))), ',')", "zero3,one3,two3", ["items"]],
+  ["join(where(items, item, item == 'two'), ',')", "two"],
+  ["join(foreach(where(nestedItems, item, item.x > 1), result, result.x), ',')", "2,3", ["nestedItems"]],
   ["last(items)", "two"],
   ["last('hello')", "o"],
   ["last(createArray(0, 1, 2))", 2],
@@ -324,15 +356,25 @@ const dataSource = [
   ["string(addProperty(json('{\"key1\":\"value1\"}'), 'key2','value2'))", "{\"key1\":\"value1\",\"key2\":\"value2\"}"],
   ["string(setProperty(json('{\"key1\":\"value1\"}'), 'key1','value2'))", "{\"key1\":\"value2\"}"],
   ["string(removeProperty(json('{\"key1\":\"value1\",\"key2\":\"value2\"}'), 'key2'))", "{\"key1\":\"value1\"}"],
+  ["coalesce(nullObj,'hello',nullObj)", "hello"],
+  ["xPath(xmlStr,'sum(/produce/item/count)')", 30],
+  ["xPath(xmlStr,'/produce/item/name')",  ["<name>Gala</name>", "<name>Honeycrisp</name>"]],
 
   // Short hand expression tests
-  ["@city == 'Bellevue'", false, ["turn.entities.city"]],
-  ["@city", "Seattle", ["turn.entities.city"]],
-  ["@city == 'Seattle'", true, ["turn.entities.city"]],
-  ["#BookFlight == 'BookFlight'", true, ["turn.intents.BookFlight"]],
-  ["exists(#BookFlight)", true, ["turn.intents.BookFlight"]],
-  ["$title", "Dialog Title", ["dialog.result.title"]],
-  ["$subTitle", "Dialog Sub Title", ["dialog.result.subTitle"]],
+  ["@city == 'Bellevue'", false, ["turn.recognized.entities.city"]],
+  ["@city", "Seattle", ["turn.recognized.entities.city"]],
+  ["@city == 'Seattle'", true, ["turn.recognized.entities.city"]],
+  ["#BookFlight == 'BookFlight'", true, ["turn.recognized.intents.BookFlight"]],
+  ["exists(#BookFlight)", true, ["turn.recognized.intents.BookFlight"]],
+  ["$title", "Dialog Title", ["dialog.title"]],
+  ["$subTitle", "Dialog Sub Title", ["dialog.subTitle"]],
+  ["~xxx", "instance", ["dialog.instance.xxx"]],
+  ["%xxx", "options", ["dialog.options.xxx"]],
+  ["^x", 3],
+  ["^y", 2],
+  ["^z", 1],
+  ["count(@@CompositeList1) == 1 && count(@@CompositeList1[0]) == 1", true, ["turn.recognized.entities.CompositeList1"]],
+  ["count(@CompositeList2) == 2 && (@CompositeList2)[0] === 'firstItem'", true, ["turn.recognized.entities.CompositeList2"]],
 
   // Memory access tests
   ["getProperty(bag, concat('na','me'))", "mybag"],
@@ -342,7 +384,41 @@ const dataSource = [
   ["bag['name']", "mybag"],
   ["bag[substring(concat('na','me','more'), 0, length('name'))]", "mybag"],
   ["getProperty(undefined, 'p')", undefined],
-  ["(getProperty(undefined, 'p'))[1]", undefined]
+  ["(getProperty(undefined, 'p'))[1]", undefined],
+
+  // Dialog tests
+  ["user.lists.todo[int(@ordinal[0]) - 1] != null", true],
+  ["user.lists.todo[int(@ordinal[0]) + 3] != null", false],
+  ["count(user.lists.todo) > int(@ordinal[0]))", true],
+  ["count(user.lists.todo) >= int(@ordinal[0]))", true],
+  ["user.lists.todo[int(@ordinal[0]) - 1]", "todo1"],
+  ["user.lists[user.listType][int(@ordinal[0]) - 1]", "todo1"],
+
+  // regex test
+  ["isMatch('abc', '^[ab]+$')", false], // simple character classes ([abc]), "+" (one or more)
+  ["isMatch('abb', '^[ab]+$')", true], // simple character classes ([abc])
+  ["isMatch('123', '^[^abc]+$')", true], // complemented character classes ([^abc])
+  ["isMatch('12a', '^[^abc]+$')", false], // complemented character classes ([^abc])
+  ["isMatch('123', '^[^a-z]+$')", true], // complemented character classes ([^a-z])
+  ["isMatch('12a', '^[^a-z]+$')", false], // complemented character classes ([^a-z])
+  ["isMatch('a1', '^[a-z]?[0-9]$')", true], // "?" (zero or one)
+  ["isMatch('1', '^[a-z]?[0-9]$')", true], // "?" (zero or one)
+  ["isMatch('1', '^[a-z]*[0-9]$')", true], // "*" (zero or more)
+  ["isMatch('abc1', '^[a-z]*[0-9]$')", true], // "*" (zero or more)
+  ["isMatch('ab', '^[a-z]{1}$')", false], // "{x}" (exactly x occurrences)
+  ["isMatch('ab', '^[a-z]{1,2}$')", true], // "{x,y}" (at least x, at most y, occurrences)
+  ["isMatch('abc', '^[a-z]{1,}$')", true], // "{x,}" (x occurrences or more)
+  ["isMatch('Name', '^(?i)name$')", true], // "(?i)x" (x ignore case)
+  ["isMatch('FORTUNE', '(?i)fortune|future')", true], // "x|y" (alternation)
+  ["isMatch('FUTURE', '(?i)fortune|future')", true], // "x|y" (alternation)
+  ["isMatch('A', '(?i)fortune|future')", false], // "x|y" (alternation)
+  ["isMatch('abacaxc', 'ab.+?c')", true], // "+?" (lazy versions)
+  ["isMatch('abacaxc', 'ab.*?c')", true], // "*?" (lazy versions)
+  ["isMatch('abacaxc', 'ab.??c')", true], // "??" (lazy versions)
+  ["isMatch('12abc34', '([0-9]+)([a-z]+)([0-9]+)')", true], // "(...)" (simple group)
+  ["isMatch('12abc', '([0-9]+)([a-z]+)([0-9]+)')", false], // "(...)" (simple group)
+  [`isMatch('a', '\\w{1}')`, true], // "\w" (match [a-zA-Z0-9_])
+  [`isMatch('1', '\\d{1}')`, true], // "\d" (match [0-9])
 ];
 
 const scope = {
@@ -351,6 +427,7 @@ const scope = {
   hello: "hello",
   world: "world",
   istrue: true,
+  nullObj: undefined,
   bag:
   {
     three: 3.0,
@@ -369,32 +446,56 @@ const scope = {
       { x: 2 },
       { x: 3 },
     ],
-  timestamp: "2018-03-15T13:00:00Z",
+  timestamp: "2018-03-15T13:00:00.111Z",
+  notISOTimestamp: "2018-03-15T13:00:00Z",
+  timestampObj: new Date("2018-03-15T13:00:00.000Z"),
+  unixTimestamp: 1521118800,
+  xmlStr: "<?xml version='1.0'?> <produce> <item> <name>Gala</name> <type>apple</type> <count>20</count> </item> <item> <name>Honeycrisp</name> <type>apple</type> <count>10</count> </item> </produce>",
+  user: 
+  {
+    lists:
+    {
+      todo: ["todo1", "todo2", "todo3"]
+    },
+    listType: "todo"
+  },
   turn:
   {
-    entities:
+    recognized:
     {
-      city: "Seattle"
-    },
-    intents:
-    {
-      BookFlight: "BookFlight"
+      entities:
+      {
+        city: "Seattle",
+        ordinal: ["1", "2", "3"],
+        CompositeList1: [["firstItem"]],
+        CompositeList2: [["firstItem", "secondItem"]]
+      },
+      intents:
+      {
+        BookFlight: "BookFlight"
+      }
     }
   },
   dialog:
   {
-    result:
-    {
-      title: "Dialog Title",
-      subTitle: "Dialog Sub Title"
-    }
+    instance: { xxx: "instance" },
+    options: { xxx: "options" },
+    title: "Dialog Title",
+    subTitle: "Dialog Sub Title"
   },
+  callstack:
+  [
+    { x: 3 },
+    { x: 2, y: 2 },
+    { x: 1, y: 1, z: 1 }
+  ]
 };
 
 describe('expression functional test', () => {
   it('should get right evaluate result', () => {
     for (const data of dataSource) {
       const input = data[0].toString();
+      console.log(input)
       var parsed = new ExpressionEngine().parse(input);
       assert(parsed !== undefined);
       var { value: actual, error } = parsed.tryEvaluate(scope);

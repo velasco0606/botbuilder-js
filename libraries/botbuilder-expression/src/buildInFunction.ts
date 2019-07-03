@@ -8,12 +8,17 @@
  */
 import { TimexProperty } from '@microsoft/recognizers-text-data-types-timex-expression';
 import * as moment from 'moment';
+import * as timezone from 'moment-timezone';
 import { Builder } from 'xml2js';
+import * as xmldom from 'xmldom';
+import * as xpathEval from 'xpath';
+import { CommonRegex } from './commonRegex';
 import { Constant } from './constant';
 import { Expression, ReturnType } from './expression';
 import { EvaluateExpressionDelegate, ExpressionEvaluator, ValidateExpressionDelegate } from './expressionEvaluator';
 import { ExpressionType } from './expressionType';
 import { Extensions } from './extensions';
+import { TimeZoneConverter } from './TimeZoneConverter';
 
 /**
  * Verify the result of an expression is of the appropriate type and return a string if not.
@@ -38,8 +43,19 @@ export type VerifyExpression = (value: any, expression: Expression, child: numbe
  *  </remarks>
  */
 export class BuiltInFunctions {
-    public static readonly DefaultDateTimeFormat: string = 'YYYY-MM-DDTHH:mm:ss.0000000[Z]';
+    public static readonly DefaultDateTimeFormat: string = 'YYYY-MM-DDTHH:mm:ss.sssZ';
+    public static readonly UnixMilliSecondToTicksConstant: number = 621355968000000000;  //constant of converting unix timestamp to ticks
+    public static readonly PrefixsOfShorthand: Map<string, string> = new Map<string, string>([
+        [ ExpressionType.Intent, 'turn.recognized.intents.' ],
+        [ ExpressionType.Entity, 'turn.recognized.entities.' ],
+        [ ExpressionType.SimpleEntity, 'turn.recognized.entities.'],
+        [ ExpressionType.Dialog, 'dialog.' ],
+        [ ExpressionType.Instance, 'dialog.instance.'],
+        [ ExpressionType.Option, 'dialog.options.']
+    ]);
+    
     public static _functions: Map<string, ExpressionEvaluator> = BuiltInFunctions.BuildFunctionLookup();
+
     /**
      * Validate that expression has a certain number of children that are of any of the supported types.
      * @param expression Expression to validate.
@@ -334,8 +350,34 @@ export class BuiltInFunctions {
      */
     public static VerifyTimestamp(value: any): string {
         let error: string;
-        if (Number.isNaN((new Date(value)).getTime())) {
-            error = `Could not parse ${value}.`;
+        try {
+            const parsedData: Date = new Date(value);
+            if (Number.isNaN(parsedData.getTime())) {
+                error = `${value} is not a valid datetime string.`;
+            }
+        } catch {
+            error = `${value} is not a valid datetime string.`;
+        }
+
+        return error;
+    }
+
+    /**
+     * Verify a timestamp string is valid ISO timestamp format.
+     * @param value timestamp string to check.
+     * @returns Error or undefined if invalid.
+     */
+    public static VerifyISOTimestamp(value: any): string {
+        let error: string;
+        try {
+            const parsedData: Date = new Date(value);
+            if (Number.isNaN(parsedData.getTime())) {
+                error = `${value} is not a valid datetime string.`;
+            } else if (parsedData.toISOString() !== value) {
+                error = `${value} is not a ISO format datetime string.`;
+            }
+        } catch {
+            error = `${value} is not a valid datetime string.`;
         }
 
         return error;
@@ -416,6 +458,34 @@ export class BuiltInFunctions {
                 } catch (e) {
                     error = e.message;
                 }
+            }
+
+            return { value, error };
+        };
+    }
+
+    public static ApplyShorthand(functionName: string, func?: (arg0: any) => { value: any; error: string })
+        : EvaluateExpressionDelegate {
+        return (expression: Expression, state: any): { value: any; error: string } => {
+            let value: any = state;
+            let error: string;
+
+            const property: string = (expression.Children[0] as Constant).Value.toString();
+            const prefixStr: string = this.PrefixsOfShorthand.get(functionName);
+            const prefixs: string[] = prefixStr.split('.').filter((x: string) => x !== undefined && x !== '');
+            for (const prefix of prefixs) {
+                ({ value, error } = Extensions.AccessProperty(value, prefix));
+                if (error !== undefined) {
+                    break;
+                }
+            }
+
+            if (error === undefined) {
+                ({ value, error } = Extensions.AccessProperty(value, property));
+            }
+
+            if (error === undefined && func !== undefined) {
+                ({ value, error } = func(value));
             }
 
             return { value, error };
@@ -538,10 +608,13 @@ export class BuiltInFunctions {
                 ({ args, error } = BuiltInFunctions.EvaluateChildren(expression, state));
                 if (error === undefined) {
                     if (typeof args[0] === 'string' && typeof args[1] === 'number') {
-                        const formatString: string = (args.length === 3 && typeof args[2] === 'string') ? args[2] : BuiltInFunctions.DefaultDateTimeFormat;
                         ({ value, error } = BuiltInFunctions.ParseTimestamp(args[0]));
                         if (error === undefined) {
-                            result = func(value.utc(), args[1]).format(BuiltInFunctions.TimestampFormatter(formatString));
+                            if (args.length === 3 && typeof args[2] === 'string') {
+                                result = func(value, args[1]).format(BuiltInFunctions.TimestampFormatter(args[2]));
+                            } else {
+                                result = func(value, args[1]).toISOString();
+                            }
                         }
                     } else {
                         error = `${expression} could not be evaluated`;
@@ -556,9 +629,9 @@ export class BuiltInFunctions {
 
     public static ParseTimestamp(timeStamp: string, transform?: (arg0: moment.Moment) => any): { value: any; error: string } {
         let value: any;
-        const error: string = this.VerifyTimestamp(timeStamp);
+        const error: string = this.VerifyISOTimestamp(timeStamp);
         if (error === undefined) {
-            const parsed: moment.Moment = moment(timeStamp);
+            const parsed: moment.Moment = moment(timeStamp).utc();
             value = transform !== undefined ? transform(parsed) : parsed;
         }
 
@@ -693,6 +766,47 @@ export class BuiltInFunctions {
         return { value, error };
     }
 
+    private static Coalesce(objetcList: object[]): any {
+        for (const obj of objetcList) {
+            if (obj !== undefined) {
+                return obj;
+            }
+        }
+
+        return undefined;
+    }
+
+    private static XPath(xmlStr: string, xpath: string): {value: any; error: string} {
+        let result: any;
+        let error: string;
+        let xmlDoc: any;
+        const parser: any = new xmldom.DOMParser();
+        let xPathResult: any;
+        try {
+            xmlDoc = parser.parseFromString(xmlStr);
+        } catch {
+            error = `${xmlStr} is not valid xml`;
+        }
+
+        if (error === undefined) {
+            try {
+                xPathResult = xpathEval.select(xpath, xmlDoc);
+            } catch {
+                error = `${xpath} is not an valid expression`;
+            }
+        }
+
+        if (error === undefined) {
+            if (typeof xPathResult === 'string' || typeof xPathResult === 'number' || typeof xPathResult === 'boolean') {
+                result = xPathResult;
+            } else if (xPathResult.length > 0) {
+                result = xPathResult.toString().split(',');
+            }
+        }
+
+        return {value: result, error};
+        }
+
     private static ExtractElement(expression: Expression, state: any): { value: any; error: string } {
         let value: any;
         let error: string;
@@ -754,6 +868,48 @@ export class BuiltInFunctions {
         return { value: result, error };
     }
 
+    private static Where(expression: Expression, state: any): { value: any; error: string } {
+        let result: any[];
+        let error: string;
+        let collection: any;
+
+        ({ value: collection, error } = expression.Children[0].tryEvaluate(state));
+
+        if (error === undefined) {
+            const iteratorName: string = <string>((<Constant>(expression.Children[1].Children[0])).Value);
+            if (!(collection instanceof Array)) {
+                error = `${expression.Children[0]} is not a collection to run where`;
+            } else {
+                result = [];
+                for (const item of collection) {
+                    const local: Map<string, any> = new Map<string, any>([
+                        [iteratorName, item]
+                    ]);
+
+                    const newScope: Map<string, any> = new Map<string, any>([
+                        ['$global', state],
+                        ['$local', local]
+                    ]);
+
+                    const { value: r, error: e } = expression.Children[2].tryEvaluate(newScope);
+                    if (e !== undefined) {
+                        return { value: undefined, error: e };
+                    }
+
+                    if ((Boolean(r))) {
+                        result.push(local.get(iteratorName));
+                    }
+                }
+            }
+        }
+
+        return { value: result, error };
+    }
+
+    private static ValidateWhere(expression: Expression): void {
+        BuiltInFunctions.ValidateForeach(expression);
+    }
+
     private static ValidateForeach(expression: Expression): void {
         if (expression.Children.length !== 3) {
             throw new Error(`foreach expect 3 parameters, found ${expression.Children.length}`);
@@ -769,6 +925,15 @@ export class BuiltInFunctions {
         // rewrite the 2nd, 3rd paramater
         expression.Children[1] = BuiltInFunctions.RewriteAccessor(expression.Children[1], iteratorName);
         expression.Children[2] = BuiltInFunctions.RewriteAccessor(expression.Children[2], iteratorName);
+    }
+
+    private static ValidateIsMatch(expression: Expression): void {
+        BuiltInFunctions.ValidateArityAndAnyType(expression, 2, 2, ReturnType.String);
+
+        const second: Expression = expression.Children[1];
+        if (second.ReturnType === ReturnType.String && second.Type === ExpressionType.Constant) {
+            CommonRegex.CreateRegex((<Constant>second).Value + '');
+        }
     }
 
     private static RewriteAccessor(expression: Expression, localVarName: string): Expression {
@@ -1063,6 +1228,328 @@ export class BuiltInFunctions {
         }
 
         return { value: result, error };
+    }
+
+    // DateTime Functions
+    private static AddToTime(timeStamp: string, interval: number, timeUnit: string, format?: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: any;
+        ({value: parsed, error} = BuiltInFunctions.ParseTimestamp(timeStamp));
+        if (error === undefined) {
+            let addedTime: moment.Moment = parsed;
+            let timeUnitMark: string;
+            switch (timeUnit) {
+                case 'Second': {
+                    timeUnitMark = 's';
+                    break;
+                }
+
+                case 'Minute': {
+                    timeUnitMark = 'm';
+                    break;
+                }
+
+                case 'Hour': {
+                    timeUnitMark = 'h';
+                    break;
+                }
+
+                case 'Day': {
+                    timeUnitMark = 'd';
+                    break;
+                }
+
+                case 'Week': {
+                    timeUnitMark = 'week';
+                    break;
+                }
+
+                case 'Month': {
+                    timeUnitMark = 'month';
+                    break;
+                }
+
+                case 'Year': {
+                    timeUnitMark = 'year';
+                    break;
+                }
+
+                default: {
+                    error = `${timeUnit} is not valid time unit`;
+                    break;
+                }
+            }
+
+            if (error === undefined) {
+                addedTime = parsed.add(interval, timeUnitMark);
+                ({value: result, error} = this.ReturnFormattedTimeStampStr(addedTime, format));
+            }
+    }
+
+        return {value: result, error};
+    }
+
+    private static ReturnFormattedTimeStampStr(timedata: moment.Moment, format: string): {value: any; error: string } {
+        let result: string;
+        let error: string;
+        try {
+            result = timedata.format(format);
+        } catch {
+            error = `${format} is not a valid timestamp format`;
+        }
+
+        return {value: result, error};
+    }
+
+    private static ConvertFromUTC(timeStamp: string, destinationTimeZone: string, format?: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        error = this.VerifyISOTimestamp(timeStamp);
+        const timeZone: string = TimeZoneConverter.WindowsToIana(destinationTimeZone);
+        if (!TimeZoneConverter.VerifyTimeZoneStr(timeZone)) {
+            error = `${destinationTimeZone} is not a valid timezone`;
+        }
+
+        if (error === undefined) {
+            try {
+                result = timezone.tz(timeStamp, timeZone).format(format);
+            } catch {
+                error = `${format} is not a valid timestamp format`;
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static VerifyTimeStamp(timeStamp: string): string {
+        let parsed: any;
+        let error: string;
+        parsed = moment(timeStamp);
+        if (parsed.toString() === 'Invalid date') {
+            error = `${timeStamp} is a invalid datetime`;
+        }
+
+        return error;
+    }
+
+    private static ConvertToUTC(timeStamp: string, sourceTimezone: string, format?: string):  {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let formattedSourceTime: string;
+        const timeZone: string = TimeZoneConverter.WindowsToIana(sourceTimezone);
+        if (!TimeZoneConverter.VerifyTimeZoneStr(timeZone)) {
+            error = `${sourceTimezone} is not a valid timezone`;
+        }
+
+        if (error === undefined) {
+            error = this.VerifyTimeStamp(timeStamp);
+            if (error === undefined) {
+                try {
+                    const sourceTime: moment.Moment = timezone.tz(timeStamp, timeZone);
+                    formattedSourceTime = sourceTime.format();
+                    } catch {
+                    error = `${timeStamp} with ${timeZone} is not a valid timestamp with specified timeZone:`;
+                }
+
+                if (error === undefined) {
+                    try {
+                        result = timezone.tz(formattedSourceTime, 'Etc/UTC').format(format);
+                    } catch {
+                        error = `${format} is not a valid timestamp format`;
+                    }
+                }
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static Ticks(timeStamp: string): {value: any; error: string} {
+        let parsed: any;
+        let result: number;
+        let error: string;
+        ({value: parsed, error} = BuiltInFunctions.ParseTimestamp(timeStamp));
+        if (error === undefined) {
+            const unixMilliSec: number = parseInt(parsed.format('x'), 10);
+            result = this.UnixMilliSecondToTicksConstant + unixMilliSec * 10000;
+        }
+
+        return {value: result, error};
+    }
+
+    private static StartOfDay(timeStamp: string, format?: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: moment.Moment;
+        ({value: parsed, error} = BuiltInFunctions.ParseTimestamp(timeStamp));
+        if (error === undefined) {
+            const startOfDay: moment.Moment = parsed.hours(0).minutes(0).second(0).millisecond(0);
+            ({value: result, error} =  BuiltInFunctions.ReturnFormattedTimeStampStr(startOfDay, format));
+        }
+
+        return {value: result, error};
+    }
+
+    private static StartOfHour(timeStamp: string, format?: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: moment.Moment;
+        ({value: parsed, error} = BuiltInFunctions.ParseTimestamp(timeStamp));
+        if (error === undefined) {
+            const startofHour: moment.Moment = parsed.minutes(0).second(0).millisecond(0);
+            ({value: result, error} =  BuiltInFunctions.ReturnFormattedTimeStampStr(startofHour, format));
+        }
+
+        return {value: result, error};
+    }
+
+    private static StartOfMonth(timeStamp: string, format?: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: moment.Moment;
+        ({value: parsed, error} = BuiltInFunctions.ParseTimestamp(timeStamp));
+        if (error === undefined) {
+            const startofMonth: moment.Moment = parsed.date(1).hours(0).minutes(0).second(0).millisecond(0);
+            ({value: result, error} =  BuiltInFunctions.ReturnFormattedTimeStampStr(startofMonth, format));
+        }
+
+        return {value: result, error};
+    }
+
+    // Uri Parsing Function
+    private static ParseUri(uri: string): {value: any; error: string} {
+        let result: URL;
+        let error: string;
+        try {
+            result = new URL(uri);
+        } catch {
+            error = `Invalid URI: ${uri}`;
+        }
+
+        return {value: result, error};
+    }
+
+    private static UriHost(uri: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: URL;
+        ({value: parsed, error} = this.ParseUri(uri));
+        if (error === undefined) {
+            try {
+                result = parsed.hostname;
+            } catch {
+                error = 'invalid operation, input uri should be an absolute URI';
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static UriPath(uri: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: URL;
+        ({value: parsed, error} = this.ParseUri(uri));
+        if (error === undefined) {
+            try {
+                const uriObj: URL = new URL(uri);
+                result = uriObj.pathname;
+            } catch {
+                error = 'invalid operation, input uri should be an absolute URI';
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static UriPathAndQuery(uri: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: URL;
+        ({value: parsed, error} = this.ParseUri(uri));
+        if (error === undefined) {
+            try {
+                result = parsed.pathname + parsed.search;
+            } catch {
+                error = 'invalid operation, input uri should be an absolute URI';
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static UriPort(uri: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: URL;
+        ({value: parsed, error} = this.ParseUri(uri));
+        if (error === undefined) {
+            try {
+                result = parsed.port;
+            } catch {
+                error = 'invalid operation, input uri should be an absolute URI';
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static UriQuery(uri: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: URL;
+        ({value: parsed, error} = this.ParseUri(uri));
+        if (error === undefined) {
+            try {
+                result = parsed.search;
+            } catch {
+                error = 'invalid operation, input uri should be an absolute URI';
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static UriScheme(uri: string): {value: any; error: string} {
+        let result: string;
+        let error: string;
+        let parsed: URL;
+        ({value: parsed, error} = this.ParseUri(uri));
+        if (error === undefined) {
+            try {
+                result = parsed.protocol.replace(':', '');
+            } catch {
+                error = 'invalid operation, input uri should be an absolute URI';
+            }
+        }
+
+        return {value: result, error};
+    }
+
+    private static Callstack(expression: Expression, state: any): { value: any; error: string } {
+        let result: any =  state;
+        let error: string;
+
+        // get collection
+        ({ value: result, error} = Extensions.AccessProperty(state, 'callstack'));
+        if (result !== undefined) {
+            const items: any[] = result as any[];
+            const property: string = (expression.Children[0] as Constant).Value.toString();
+
+            for (const item of items) {
+                // get property off of item
+                ({ value: result, error } = Extensions.AccessProperty(item, property));
+
+                // if not null
+                if (error === undefined && result !== undefined) {
+                    // return it
+                    return { value: result, error };
+                }
+            }
+        }
+
+        return { value: undefined, error };
     }
 
     // tslint:disable-next-line: max-func-body-length
@@ -1398,7 +1885,7 @@ export class BuiltInFunctions {
             new ExpressionEvaluator(
                 ExpressionType.Date,
                 BuiltInFunctions.ApplyWithError(
-                    (args: ReadonlyArray<any>) => BuiltInFunctions.ParseTimestamp(args[0], (dt: moment.Moment) => dt.utc().format('M/DD/YYYY')),
+                    (args: ReadonlyArray<any>) => BuiltInFunctions.ParseTimestamp(args[0], (dt: moment.Moment) => dt.format('M/DD/YYYY')),
                     BuiltInFunctions.VerifyString),
                 ReturnType.String,
                 BuiltInFunctions.ValidateUnaryString),
@@ -1411,19 +1898,32 @@ export class BuiltInFunctions {
                 BuiltInFunctions.ValidateUnaryString),
             new ExpressionEvaluator(
                 ExpressionType.UtcNow,
-                BuiltInFunctions.ApplyWithError(
-                    (args: ReadonlyArray<any>) => moment().utc().format(args.length === 1 ? args[0] : BuiltInFunctions.DefaultDateTimeFormat),
+                BuiltInFunctions.Apply(
+                    (args: ReadonlyArray<any>) => args.length === 1 ? moment(new Date().toISOString()).utc().format(args[0]) : new Date().toISOString(),
                     BuiltInFunctions.VerifyString),
                 ReturnType.String),
             new ExpressionEvaluator(
                 ExpressionType.FormatDateTime,
                 BuiltInFunctions.ApplyWithError(
-                    (args: ReadonlyArray<any>) =>
-                        BuiltInFunctions.ParseTimestamp(args[0], (dt: moment.Moment) =>
-                            dt.utc().format(args.length === 2 ? BuiltInFunctions.TimestampFormatter(args[1]) : BuiltInFunctions.DefaultDateTimeFormat)),
-                    BuiltInFunctions.VerifyString),
+                    (args: ReadonlyArray<any>) => {
+                        let error: string;
+                        let arg: any = args[0];
+                        if (typeof arg === 'number') {
+                            arg = arg * 1000;
+                        } else {
+                            error = BuiltInFunctions.VerifyTimestamp(arg.toString());
+                        }
+
+                        let value: any;
+                        if (error === undefined) {
+                            const dateString: string = new Date(arg).toISOString();
+                            value = args.length === 2 ? moment(dateString).format(BuiltInFunctions.TimestampFormatter(args[1])) : dateString;
+                        }
+
+                        return { value, error };
+                    }),
                 ReturnType.String,
-                (expression: Expression): void => BuiltInFunctions.ValidateOrder(expression, [ReturnType.String], ReturnType.String)),
+                (expression: Expression): void => BuiltInFunctions.ValidateOrder(expression, [ReturnType.String], ReturnType.Object)),
             new ExpressionEvaluator(
                 ExpressionType.SubtractFromTime,
                 (expr: Expression, state: any): { value: any; error: string } => {
@@ -1439,7 +1939,8 @@ export class BuiltInFunctions {
                                 error = `${args[2]} is not a valid time unit.`;
                             } else {
                                 const dur: any = duration;
-                                ({ value, error } = BuiltInFunctions.ParseTimestamp(args[0], dt => dt.utc().subtract(dur, tsStr).format(format)));
+                                ({ value, error } = BuiltInFunctions.ParseTimestamp(args[0], dt => args.length === 4 ?
+                                    dt.subtract(dur, tsStr).format(format) : dt.subtract(dur, tsStr).toISOString()));
                             }
                         } else {
                             error = `${expr} can't evaluate.`;
@@ -1475,7 +1976,7 @@ export class BuiltInFunctions {
                 BuiltInFunctions.ApplyWithError(
                     (args: ReadonlyArray<any>) => {
                         let value: any;
-                        let error: string = BuiltInFunctions.VerifyTimestamp(args[0]);
+                        const error: string = BuiltInFunctions.VerifyISOTimestamp(args[0]);
                         if (error === undefined) {
                             const thisTime: number = moment.parseZone(args[0]).hour() * 100 + moment.parseZone(args[0]).minute();
                             if (thisTime === 0) {
@@ -1552,6 +2053,265 @@ export class BuiltInFunctions {
                 ReturnType.String,
                 (expression: Expression): void => BuiltInFunctions.ValidateOrder(expression, [ReturnType.String], ReturnType.Number, ReturnType.String)
             ),
+            new ExpressionEvaluator(
+                ExpressionType.ConvertFromUTC,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        const format: string = (args.length === 3) ? BuiltInFunctions.TimestampFormatter(args[2]) : this.DefaultDateTimeFormat;
+                        if (typeof(args[0]) === 'string' && typeof(args[1]) === 'string') {
+                            ({value, error} = BuiltInFunctions.ConvertFromUTC(args[0], args[1], format));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                (expr: Expression): void => BuiltInFunctions.ValidateOrder(expr, [ReturnType.String], ReturnType.String, ReturnType.String)
+                ),
+            new ExpressionEvaluator(
+                    ExpressionType.ConvertToUTC,
+                    (expr: Expression, state: any) : { value: any; error: string } => {
+                        let value: any;
+                        let error: string;
+                        let args: ReadonlyArray<any>;
+                        ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                        if (error === undefined) {
+                            const format: string = (args.length === 3) ? BuiltInFunctions.TimestampFormatter(args[2]) : this.DefaultDateTimeFormat;
+                            if (typeof(args[0]) === 'string' && typeof(args[1]) === 'string') {
+                                ({value, error} = BuiltInFunctions.ConvertToUTC(args[0], args[1], format));
+                            } else {
+                                error = `${expr} cannot evaluate`;
+                            }
+                        }
+
+                        return {value, error};
+                    },
+                    ReturnType.String,
+                    (expr: Expression): void => BuiltInFunctions.ValidateOrder(expr, [ReturnType.String], ReturnType.String, ReturnType.String)
+                    ),
+            new ExpressionEvaluator(
+                ExpressionType.AddToTime,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        const format: string = (args.length === 4) ? BuiltInFunctions.TimestampFormatter(args[3]) : this.DefaultDateTimeFormat;
+                        if (typeof(args[0]) === 'string' && Number.isInteger(args[1]) && typeof(args[2]) === 'string') {
+                            ({value, error} = BuiltInFunctions.AddToTime(args[0], args[1], args[2], format));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                (expr: Expression): void => BuiltInFunctions.ValidateOrder(expr, [ReturnType.String], ReturnType.String, ReturnType.Number, ReturnType.String)
+                ),
+            new ExpressionEvaluator(
+                ExpressionType.StartOfDay,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        const format: string = (args.length === 2) ? BuiltInFunctions.TimestampFormatter(args[1]) : this.DefaultDateTimeFormat;
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.StartOfDay(args[0], format));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                (expr: Expression): void => BuiltInFunctions.ValidateOrder(expr, [ReturnType.String], ReturnType.String)
+                ),
+            new ExpressionEvaluator(
+                ExpressionType.StartOfHour,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        const format: string = (args.length === 2) ? BuiltInFunctions.TimestampFormatter(args[1]) : this.DefaultDateTimeFormat;
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.StartOfHour(args[0], format));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                (expr: Expression): void => BuiltInFunctions.ValidateOrder(expr, [ReturnType.String], ReturnType.String)
+                ),
+            new ExpressionEvaluator(
+                ExpressionType.StartOfMonth,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        const format: string = (args.length === 2) ? BuiltInFunctions.TimestampFormatter(args[1]) : this.DefaultDateTimeFormat;
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.StartOfMonth(args[0], format));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                (expr: Expression): void => BuiltInFunctions.ValidateOrder(expr, [ReturnType.String], ReturnType.String)
+                ),
+            new ExpressionEvaluator(
+                ExpressionType.Ticks,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.Ticks(args[0]));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.Number,
+                BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(
+                ExpressionType.UriHost,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.UriHost(args[0]));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(
+                ExpressionType.UriPath,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.UriPath(args[0]));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(
+                ExpressionType.UriPathAndQuery,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.UriPathAndQuery(args[0]));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(
+                ExpressionType.UriQuery,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.UriQuery(args[0]));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(
+                ExpressionType.UriPort,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.UriPort(args[0]));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.Number,
+                BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(
+                ExpressionType.UriScheme,
+                (expr: Expression, state: any) : { value: any; error: string } => {
+                    let value: any;
+                    let error: string;
+                    let args: ReadonlyArray<any>;
+                    ({args, error} = BuiltInFunctions.EvaluateChildren(expr, state));
+                    if (error === undefined) {
+                        if (typeof(args[0]) === 'string') {
+                            ({value, error} = BuiltInFunctions.UriScheme(args[0]));
+                        } else {
+                            error = `${expr} cannot evaluate`;
+                        }
+                    }
+
+                    return {value, error};
+                },
+                ReturnType.String,
+                BuiltInFunctions.ValidateUnary),
             new ExpressionEvaluator(
                 ExpressionType.Float,
                 BuiltInFunctions.ApplyWithError(
@@ -1649,7 +2409,7 @@ export class BuiltInFunctions {
                 ReturnType.String,
                 BuiltInFunctions.ValidateUnary),
             new ExpressionEvaluator(
-                ExpressionType.DecodeUriComponent,
+                ExpressionType.UriComponentToString,
                 BuiltInFunctions.Apply((args: Readonly<any>) => decodeURIComponent(args[0]), BuiltInFunctions.VerifyString),
                 ReturnType.String,
                 BuiltInFunctions.ValidateUnary),
@@ -1750,7 +2510,72 @@ export class BuiltInFunctions {
                     }),
                 ReturnType.Object,
                 (expression: Expression): void => BuiltInFunctions.ValidateOrder(expression, undefined, ReturnType.Object, ReturnType.String)),
-            new ExpressionEvaluator(ExpressionType.Foreach, BuiltInFunctions.Foreach, ReturnType.Object, BuiltInFunctions.ValidateForeach)
+            new ExpressionEvaluator(ExpressionType.Select, BuiltInFunctions.Foreach, ReturnType.Object, BuiltInFunctions.ValidateForeach),
+            new ExpressionEvaluator(ExpressionType.Foreach, BuiltInFunctions.Foreach, ReturnType.Object, BuiltInFunctions.ValidateForeach),
+            new ExpressionEvaluator(ExpressionType.Where, BuiltInFunctions.Where, ReturnType.Object, BuiltInFunctions.ValidateWhere),
+
+            //URI Parsing Functions
+            new ExpressionEvaluator(ExpressionType.UriHost, BuiltInFunctions.ApplyWithError((args: Readonly<any>) => this.UriHost(args[0]), BuiltInFunctions.VerifyString),
+                                    ReturnType.String, BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(ExpressionType.UriPath, BuiltInFunctions.ApplyWithError((args: Readonly<any>) => this.UriPath(args[0]), BuiltInFunctions.VerifyString),
+                                    ReturnType.String, BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(ExpressionType.UriPathAndQuery,
+                                    BuiltInFunctions.ApplyWithError((args: Readonly<any>) => this.UriPathAndQuery(args[0]), BuiltInFunctions.VerifyString),
+                                    ReturnType.String, BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(ExpressionType.UriQuery, BuiltInFunctions.ApplyWithError((args: Readonly<any>) => this.UriQuery(args[0]), BuiltInFunctions.VerifyString), 
+                                    ReturnType.String, BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(ExpressionType.UriPort, BuiltInFunctions.ApplyWithError((args: Readonly<any>) => this.UriPort(args[0]), BuiltInFunctions.VerifyString), 
+                                    ReturnType.String, BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(ExpressionType.UriScheme, BuiltInFunctions.ApplyWithError((args: Readonly<any>) => this.UriScheme(args[0]), BuiltInFunctions.VerifyString), 
+                                    ReturnType.String, BuiltInFunctions.ValidateUnary),
+            new ExpressionEvaluator(ExpressionType.Coalesce, BuiltInFunctions.Apply((args: ReadonlyArray<any>[]) => this.Coalesce(<object []>args)),
+                                    ReturnType.Object, BuiltInFunctions.ValidateAtLeastOne),
+            new ExpressionEvaluator(ExpressionType.XPath, BuiltInFunctions.ApplyWithError((args: ReadonlyArray<any>[]) => this.XPath(args[0].toString(), args[1].toString())),
+                                    ReturnType.Object, (expr: Expression): void => BuiltInFunctions.ValidateOrder(expr, undefined, ReturnType.String, ReturnType.String)),
+
+            // Regex expression functions
+            new ExpressionEvaluator(
+                ExpressionType.IsMatch,
+                BuiltInFunctions.ApplyWithError(
+                    (args: ReadonlyArray<any>) => {
+                       let value: boolean = false;
+                       let error: string;
+                       if (args[0] === undefined || args[0] === '') {
+                           value = false;
+                           error = 'regular expression is empty.';
+                       } else {
+                           const regex: RegExp = CommonRegex.CreateRegex(args[1]);
+                           value = regex.test(args[0]);
+                       }
+
+                       return {value, error};
+                    }),
+                ReturnType.Boolean,
+                BuiltInFunctions.ValidateIsMatch),
+
+            // Shorthand functions
+            new ExpressionEvaluator(ExpressionType.Intent, this.ApplyShorthand(ExpressionType.Intent), ReturnType.Object, this.ValidateUnaryString),
+            new ExpressionEvaluator(ExpressionType.Dialog, this.ApplyShorthand(ExpressionType.Dialog), ReturnType.Object, this.ValidateUnaryString),
+            new ExpressionEvaluator(ExpressionType.Instance, this.ApplyShorthand(ExpressionType.Instance), ReturnType.Object, this.ValidateUnaryString),
+            new ExpressionEvaluator(ExpressionType.Option, this.ApplyShorthand(ExpressionType.Option), ReturnType.Object, this.ValidateUnaryString),
+            new ExpressionEvaluator(ExpressionType.Callstack, this.Callstack, ReturnType.Object, this.ValidateUnaryString),
+            new ExpressionEvaluator(ExpressionType.Entity, this.ApplyShorthand(ExpressionType.Entity), ReturnType.Object, this.ValidateUnaryString),
+            new ExpressionEvaluator(
+                ExpressionType.SimpleEntity,
+                this.ApplyShorthand(
+                    ExpressionType.SimpleEntity,
+                    (entity: any): { value: any; error: string } => {
+                        let result: any = entity;
+
+                        while (Array.isArray(result) && result.length === 1) {
+                            result = result[0];
+                        }
+
+                        return { value: result, error: undefined };
+                    }
+                ),
+                ReturnType.Object,
+                this.ValidateUnaryString)
         ];
 
         const lookup: Map<string, ExpressionEvaluator> = new Map<string, ExpressionEvaluator>();

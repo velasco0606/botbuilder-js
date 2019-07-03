@@ -35,6 +35,8 @@ fragment T: 't' | 'T';
 fragment U: 'u' | 'U';
 fragment W: 'w' | 'W';
 
+fragment STRING_LITERAL : ('\'' (~['\r\n])* '\'') | ('"' (~["\r\n])* '"');
+
 COMMENTS
   : ('>'|'$') ~('\r'|'\n')+ -> skip
   ;
@@ -53,6 +55,14 @@ HASH
 
 DASH
   : '-' {this.expectKeywords = true;} -> pushMode(TEMPLATE_BODY_MODE)
+  ;
+
+IMPORT_DESC
+  : '[' .*? ']'
+  ;
+
+IMPORT_PATH
+  : '(' .*? ')'
   ;
 
 INVALID_TOKEN_DEFAULT_MODE
@@ -145,7 +155,7 @@ INVALID_ESCAPE
   ;
 
 EXPRESSION
-  : '@'? '{' ~[\r\n{}]* '}'  { this.ignoreWS = false; this.expectKeywords = false;}
+  : '@'? '{' (~[\r\n{}] | STRING_LITERAL)*  '}'  { this.ignoreWS = false; this.expectKeywords = false;}
   ;
 
 TEMPLATE_REF

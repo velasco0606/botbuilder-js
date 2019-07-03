@@ -1,55 +1,57 @@
 /**
- * @module botbuilder-dialogs-adaptive
+ * @module botbuilder-planning
  */
 /**
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogContext, DialogConfiguration, Dialog } from 'botbuilder-dialogs';
-import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
+import { DialogTurnResult, DialogCommand, DialogContext, DialogConfiguration } from 'botbuilder-dialogs';
 
-export interface CancelDialogConfiguration extends DialogConfiguration {
+export interface CancelAllDialogsConfiguration extends DialogConfiguration {
     eventName?: string;
-    eventValue?: ExpressionPropertyValue<any>;
+    eventValue?: string;
+    eventValueProperty?: string;
 }
 
-export class CancelAllDialogs extends Dialog {
+export class CancelAllDialogs extends DialogCommand {
 
-    constructor(eventName?: string, eventValue?: ExpressionPropertyValue<any>) {
+    constructor();
+    constructor(eventName: string, eventValue?: string|object);
+    constructor(eventName?: string, eventValue?: string|object) {
         super();
-        this.inheritState = true;
         this.eventName = eventName;
-        if (eventValue) { this.eventValue = new ExpressionProperty(eventValue) }
+        if (typeof eventValue == 'string') {
+            this.eventValueProperty = eventValue;
+        } else {
+            this.eventValue = eventValue
+        }
     }
     
     protected onComputeID(): string {
         return `cancelAllDialogs[${this.hashedLabel(this.eventName || '')}]`;
     }
 
-    public eventName?: string;
+    public eventName: string;
 
-    public eventValue?: ExpressionProperty<any>;
+    public eventValue: object;
 
-    public configure(config: CancelDialogConfiguration): this {
-        for (const key in config) {
-            if (config.hasOwnProperty(key)) {
-                const value = config[key];
-                switch(key) {
-                    case 'eventValue':
-                        this.eventValue = new ExpressionProperty(value);
-                        break;
-                    default:
-                        super.configure({ [key]: value });
-                        break;
-                }
-            }
-        }
+    public set eventValueProperty(value: string) {
+        this.inputProperties['eventValue'] = value;
+    }
 
-        return this;
+    public get eventValueProperty(): string {
+        return this.inputProperties['eventValue'];
+    }
+
+    public configure(config: CancelAllDialogsConfiguration): this {
+        return super.configure(config);
     }
     
-    public async beginDialog(dc: DialogContext, options: object): Promise<DialogTurnResult> {
-        const value = this.eventValue ? this.eventValue.evaluate(this.id, dc.state.toJSON()) : undefined;
-        return await dc.cancelAllDialogs(this.eventName, value);
+    protected async onRunCommand(dc: DialogContext, options: object): Promise<DialogTurnResult> {
+        const opt = Object.assign({
+            eventName: this.eventName,
+            eventValue: this.eventValue
+        }, options);
+        return await dc.cancelAllDialogs(opt.eventName, opt.eventValue);
     }
 }
