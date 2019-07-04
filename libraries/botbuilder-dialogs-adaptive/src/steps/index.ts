@@ -22,6 +22,8 @@ export * from './initProperty';
 export * from './logStep';
 export * from './repeatDialog';
 export * from './replaceDialog';
+export * from './saveAdaptiveCardInput';
 export * from './sendActivity';
+export * from './sendAdaptiveCard';
 export * from './sendList';
 export * from './setProperty';

@@ -209,16 +209,16 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
     protected onRenderPrompt(dc: DialogContext, state: InputState): Partial<Activity> {
         switch (state) {
             case InputState.unrecognized:
-                if (this.unrecognizedPrompt.hasValue) {
+                if (this.unrecognizedPrompt.hasValue()) {
                     return this.unrecognizedPrompt.format(dc);
-                } else if (this.invalidPrompt.hasValue) {
+                } else if (this.invalidPrompt.hasValue()) {
                     return this.invalidPrompt.format(dc);
                 }
                 break;
             case InputState.invalid:
-                if (this.invalidPrompt.hasValue) {
+                if (this.invalidPrompt.hasValue()) {
                     return this.invalidPrompt.format(dc);
-                } else if (this.unrecognizedPrompt.hasValue) {
+                } else if (this.unrecognizedPrompt.hasValue()) {
                     return this.unrecognizedPrompt.format(dc);
                 }
                 break;

@@ -57,6 +57,7 @@ export class NumberInput extends InputDialog<InputDialogOptions> {
     protected async onRecognizeInput(dc: DialogContext, consultation: boolean): Promise<InputState> {
         // Recognize input if needed
         let input: any = dc.state.getValue(InputDialog.INPUT_PROPERTY);
+        if (Number.isNaN(input)) { input = '' }
         if (typeof input !== 'number') {
             // Find locale to use
             const activity: Activity = dc.context.activity;
