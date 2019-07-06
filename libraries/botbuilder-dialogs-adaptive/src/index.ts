@@ -10,6 +10,7 @@ export * from './recognizers';
 export * from './rules';
 export * from './steps';
 export * from './activityProperty';
+export * from './adaptiveCardTemplate';
 export * from './adaptiveDialog';
 export * from './expressionProperty';
 export * from './sequenceContext';

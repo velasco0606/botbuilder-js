@@ -7,6 +7,7 @@
  */
 import { DialogTurnResult, DialogConfiguration, Dialog, DialogContext } from 'botbuilder-dialogs';
 import { Activity, InputHints, MessageFactory, CardFactory } from 'botbuilder-core';
+import { AdaptiveCardTemplate } from '../adaptiveCardTemplate';
 
 export interface SaveAdaptiveCardInputConfiguration extends DialogConfiguration {
     /**
@@ -36,22 +37,22 @@ export interface SaveAdaptiveCardInputConfiguration extends DialogConfiguration 
 export class SaveAdaptiveCardInput extends Dialog {
     private inputs: object[];
 
-    public adaptiveCard: object;
-    public cardDataProperty?: string;
+    public template: AdaptiveCardTemplate;
+    public dataProperty?: string;
 
 
     /**
      * Creates a new `SaveAdaptiveCardInput` instance.
      */
-    constructor(adaptiveCard?: object|string, cardDataProperty?: string) {
+    constructor(template?: object|string, dataProperty?: string) {
         super();
         this.inheritState = true;
-        if (adaptiveCard) { this.adaptiveCard = typeof adaptiveCard == 'string' ? JSON.parse(adaptiveCard) : adaptiveCard }
-        if (cardDataProperty) { this.cardDataProperty = cardDataProperty }
+        if (template) { this.template = new AdaptiveCardTemplate(template) }
+        if (dataProperty) { this.dataProperty = dataProperty }
     }
 
     protected onComputeID(): string {
-        return `SaveAdaptiveCardInput[${this.hashedLabel(JSON.stringify(this.adaptiveCard))}]`;
+        return `SaveAdaptiveCardInput[${this.hashedLabel(this.template.asString)}]`;
     }
 
     public configure(config: SaveAdaptiveCardInputConfiguration): this {
@@ -59,11 +60,11 @@ export class SaveAdaptiveCardInput extends Dialog {
     }
     
     public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
-        if (!this.adaptiveCard) { throw new Error(`${this.id}: no adaptive card assigned.`) }
+        if (!this.template) { throw new Error(`${this.id}: no adaptive card assigned.`) }
 
         // Find all input elements on first call
         if (!this.inputs) { 
-            this.inputs = SaveAdaptiveCardInput.findInputElements(this.adaptiveCard); 
+            this.inputs = this.template.select('Input.*'); 
         }
 
         // Save any recognized inputs
@@ -78,8 +79,8 @@ export class SaveAdaptiveCardInput extends Dialog {
                     if (Array.isArray(value)) { value = value[0] }
                     
                     // Prefix ID with card data property
-                    if (this.cardDataProperty) {
-                        id = `${this.cardDataProperty}.${id}`;
+                    if (this.dataProperty) {
+                        id = `${this.dataProperty}.${id}`;
                     }
 
                     // Save value to memory
@@ -99,38 +100,5 @@ export class SaveAdaptiveCardInput extends Dialog {
         }
 
         return await dc.endDialog();
-    }
-
-    static findInputElements(card: object): object[] {
-        const inputs: object[] = [];
-        if (Array.isArray(card)) {
-            card.forEach(child => {
-                const found = SaveAdaptiveCardInput.findInputElements(child);
-                if (found.length > 0) {
-                    // Append to output
-                    Array.prototype.push.apply(inputs, found);
-                }
-            });
-        } else if (typeof card == 'object') {
-            // Process child elements
-            for (const prop in card) {
-                if (card.hasOwnProperty(prop)) {
-                    const found = SaveAdaptiveCardInput.findInputElements(card[prop]);
-                    if (found.length > 0) {
-                        // Append to output
-                        Array.prototype.push.apply(inputs, found);
-                    }
-                }
-            }
-
-            // Process this element
-            const type: string = card['type'] || '';
-            if (type.startsWith('Input.')) {
-                // Append to output
-                inputs.push(card);    
-            }
-        }
-
-        return inputs;
     }
 }
