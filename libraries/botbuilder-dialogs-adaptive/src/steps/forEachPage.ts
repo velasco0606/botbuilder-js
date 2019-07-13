@@ -156,9 +156,10 @@ export class ForEachPage extends Dialog {
         return await sequence.endDialog();
     }
 
-    private getPage(list: any[]|object, offset: number, pageSize: number): any[] {
+    private getPage(list: any[]|object|string, offset: number, pageSize: number): any[] {
         const page: any[] = [];
         const end = offset + pageSize;
+        if (typeof list == 'string') { list = list.split(/(?:,|;)/g) }
         if (Array.isArray(list)) {
             for (let i = offset; i >= offset && i < end; i++) {
                 page.push(list[i]);

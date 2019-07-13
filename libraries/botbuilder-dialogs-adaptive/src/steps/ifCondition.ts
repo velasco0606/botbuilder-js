@@ -49,6 +49,7 @@ export class IfCondition extends Dialog {
      */
     constructor(condition?: ExpressionPropertyValue<boolean>, steps?: Dialog[]) {
         super();
+        this.inheritState = true;
         if (condition) { this.condition = new ExpressionProperty(condition) }
         if (Array.isArray(steps)) { this.steps = steps }
     }

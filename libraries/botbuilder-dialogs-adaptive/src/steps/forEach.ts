@@ -144,7 +144,8 @@ export class ForEach extends Dialog {
         return await sequence.endDialog();
     }
 
-    private getItem(list: any[]|object, index: number): any {
+    private getItem(list: any[]|object|string, index: number): any {
+        if (typeof list == 'string') { list = list.split(/(?:,|;)/g) }
         if (Array.isArray(list)) {
             if (index < list.length) {
                 return list[index];

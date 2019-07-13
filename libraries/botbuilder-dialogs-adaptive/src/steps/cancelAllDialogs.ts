@@ -19,6 +19,7 @@ export class CancelAllDialogs extends Dialog {
     constructor(eventName: string, eventValue?: string|object);
     constructor(eventName?: string, eventValue?: string|object) {
         super();
+        this.inheritState = true;
         this.eventName = eventName;
         if (typeof eventValue == 'string') {
             this.eventValueProperty = eventValue;

@@ -40,6 +40,7 @@ export class InitProperty extends Dialog {
     constructor(property: string, type: string);
     constructor(property?: string, type?: string) {
         super();
+        this.inheritState = true;
         if (property) { this.property = property }
         if (type) { this.type = type }
     }

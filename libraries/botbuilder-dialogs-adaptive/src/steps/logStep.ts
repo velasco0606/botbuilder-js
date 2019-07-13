@@ -43,6 +43,7 @@ export class LogStep extends Dialog {
     constructor(text: string, traceActivity?: boolean);
     constructor(text?: string, traceActivity = false) {
         super();
+        this.inheritState = true;
         if (text) { this.text = text }
         this.traceActivity = traceActivity;
     }

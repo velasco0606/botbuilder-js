@@ -3,7 +3,7 @@
 
 import * as restify from 'restify';
 import { BotFrameworkAdapter, MemoryStorage } from 'botbuilder';
-import { AdaptiveDialog, UnknownIntentRule, SendActivity, TextInput, IfCondition, RegExpRecognizer, IntentRule, EndTurn, BeginDialog, EndDialog } from 'botbuilder-dialogs-adaptive';
+import { AdaptiveDialog, UnknownIntentRule, SendActivity, TextInput, IfCondition, RegExpRecognizer, IntentRule, EndTurn, BeginDialog, EndDialog, SendAdaptiveCard, SetProperty, SaveAdaptiveCardInput, NumberInput } from 'botbuilder-dialogs-adaptive';
 import { DialogManager } from 'botbuilder-dialogs';
 
 // Create adapter.
@@ -33,6 +33,35 @@ server.post('/api/messages', (req, res) => {
     });
 });
 
+const profileCard = {
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.0",
+    "body": [
+        {
+            "type": "Input.Text",
+            "id": "name",
+            "placeholder": "Name"
+        },
+        {
+            "type": "Input.Number",
+            "id": "age",
+            "placeholder": "Age",
+            "min": "1",
+            "max": "101"
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.Submit",
+            "title": "Update Profile {name}",
+            "data": {
+                "intent": "UpdateProfile"
+            }
+        }
+    ]
+};
+
 // Initialize bots root dialog
 const dialogs = new AdaptiveDialog();
 bot.rootDialog = dialogs;
@@ -41,36 +70,19 @@ bot.rootDialog = dialogs;
 // Rules
 //=================================================================================================
 
-dialogs.recognizer = new RegExpRecognizer().addIntent('JokeIntent', /tell .*joke/i);
+dialogs.recognizer = new RegExpRecognizer().addIntent('EditProfile', /edit .*profile/i);
 
-// Tell the user a joke
-dialogs.addRule(new IntentRule('#JokeIntent', [
-    new BeginDialog('TellJokeDialog')
+dialogs.addRule(new IntentRule('#EditProfile', [
+    new SendAdaptiveCard(profileCard, 'user.profile')
 ]));
 
-// Handle unknown intents
+dialogs.addRule(new IntentRule('#UpdateProfile', [
+    new SaveAdaptiveCardInput(profileCard, 'user.profile'),
+    new TextInput('user.profile.name', `What is your name?`),
+    new NumberInput('user.profile.age', `How old are you {user.profile.name}?`),
+    new SendActivity(`Profile updated {user.profile.name}...`)
+]));
+
 dialogs.addRule(new UnknownIntentRule([
-    new BeginDialog('AskNameDialog')
+    new SendActivity(`Say "edit my profile" to get started`)
 ]));
-
-
-//=================================================================================================
-// Child Dialogs
-//=================================================================================================
-
-const askNameDialog = new AdaptiveDialog('AskNameDialog', [
-    new IfCondition('user.name == null', [
-        new TextInput('user.name', `Hi! what's your name?`)
-    ]),
-    new SendActivity(`Hi {user.name}. It's nice to meet you.`),
-    new EndDialog()
-]);
-dialogs.addDialog(askNameDialog)
-
-const tellJokeDialog = new AdaptiveDialog('TellJokeDialog',[
-    new SendActivity(`Why did the 🐔 cross the 🛣️?`),
-    new EndTurn(),
-    new SendActivity(`To get to the other side...`),
-    new EndDialog()
-]);
-dialogs.addDialog(tellJokeDialog);

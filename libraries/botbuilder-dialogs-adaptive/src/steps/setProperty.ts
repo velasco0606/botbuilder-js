@@ -40,6 +40,7 @@ export class SetProperty extends Dialog {
     constructor(property: string, value: ExpressionPropertyValue<any>);
     constructor(property?: string, value?: ExpressionPropertyValue<any>) {
         super();
+        this.inheritState = true;
         if (property) { this.property = property }
         if (value) { this.value = new ExpressionProperty(value) }
     }

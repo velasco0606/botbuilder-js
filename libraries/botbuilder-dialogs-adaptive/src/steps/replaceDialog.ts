@@ -39,6 +39,7 @@ export class ReplaceDialog extends Dialog {
      */
     constructor(dialogId?: string) {
         super();
+        this.inheritState = true;
         if (dialogId) { this.dialogId = dialogId }
     }
 

@@ -29,37 +29,51 @@ server.post('/api/messages', (req, res) => {
         await bot.onTurn(context);
     });
 });
+const profileCard = {
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.0",
+    "body": [
+        {
+            "type": "Input.Text",
+            "id": "name",
+            "placeholder": "Name"
+        },
+        {
+            "type": "Input.Number",
+            "id": "age",
+            "placeholder": "Age",
+            "min": "1",
+            "max": "101"
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.Submit",
+            "title": "Update Profile {name}",
+            "data": {
+                "intent": "UpdateProfile"
+            }
+        }
+    ]
+};
 // Initialize bots root dialog
 const dialogs = new botbuilder_dialogs_adaptive_1.AdaptiveDialog();
 bot.rootDialog = dialogs;
 //=================================================================================================
 // Rules
 //=================================================================================================
-dialogs.recognizer = new botbuilder_dialogs_adaptive_1.RegExpRecognizer().addIntent('JokeIntent', /tell .*joke/i);
-// Tell the user a joke
-dialogs.addRule(new botbuilder_dialogs_adaptive_1.IntentRule('#JokeIntent', [
-    new botbuilder_dialogs_adaptive_1.BeginDialog('TellJokeDialog')
+dialogs.recognizer = new botbuilder_dialogs_adaptive_1.RegExpRecognizer().addIntent('EditProfile', /edit .*profile/i);
+dialogs.addRule(new botbuilder_dialogs_adaptive_1.IntentRule('#EditProfile', [
+    new botbuilder_dialogs_adaptive_1.SendAdaptiveCard(profileCard, 'user.profile')
 ]));
-// Handle unknown intents
+dialogs.addRule(new botbuilder_dialogs_adaptive_1.IntentRule('#UpdateProfile', [
+    new botbuilder_dialogs_adaptive_1.SaveAdaptiveCardInput(profileCard, 'user.profile'),
+    new botbuilder_dialogs_adaptive_1.TextInput('user.profile.name', `What is your name?`),
+    new botbuilder_dialogs_adaptive_1.NumberInput('user.profile.age', `How old are you {user.profile.name}?`),
+    new botbuilder_dialogs_adaptive_1.SendActivity(`Profile updated {user.profile.name}...`)
+]));
 dialogs.addRule(new botbuilder_dialogs_adaptive_1.UnknownIntentRule([
-    new botbuilder_dialogs_adaptive_1.BeginDialog('AskNameDialog')
+    new botbuilder_dialogs_adaptive_1.SendActivity(`Say "edit my profile" to get started`)
 ]));
-//=================================================================================================
-// Child Dialogs
-//=================================================================================================
-const askNameDialog = new botbuilder_dialogs_adaptive_1.AdaptiveDialog('AskNameDialog', [
-    new botbuilder_dialogs_adaptive_1.IfCondition('user.name == null', [
-        new botbuilder_dialogs_adaptive_1.TextInput('user.name', `Hi! what's your name?`)
-    ]),
-    new botbuilder_dialogs_adaptive_1.SendActivity(`Hi {user.name}. It's nice to meet you.`),
-    new botbuilder_dialogs_adaptive_1.EndDialog()
-]);
-dialogs.addDialog(askNameDialog);
-const tellJokeDialog = new botbuilder_dialogs_adaptive_1.AdaptiveDialog('TellJokeDialog', [
-    new botbuilder_dialogs_adaptive_1.SendActivity(`Why did the 🐔 cross the 🛣️?`),
-    new botbuilder_dialogs_adaptive_1.EndTurn(),
-    new botbuilder_dialogs_adaptive_1.SendActivity(`To get to the other side...`),
-    new botbuilder_dialogs_adaptive_1.EndDialog()
-]);
-dialogs.addDialog(tellJokeDialog);
 //# sourceMappingURL=index.js.map
