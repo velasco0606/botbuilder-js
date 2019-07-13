@@ -27,3 +27,4 @@ export * from './sendActivity';
 export * from './sendAdaptiveCard';
 export * from './sendList';
 export * from './setProperty';
+export * from './translate';
