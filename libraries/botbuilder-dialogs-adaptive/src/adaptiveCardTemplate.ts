@@ -8,11 +8,24 @@
 import * as jsonpath from 'jsonpath';
 import { ExpressionEngine } from '../../botbuilder-expression-parser/lib';
 
-export class AdaptiveCardTemplate {
-    private transforms: TransformFunction[];
+export type AdaptiveCardTransform = (card: object, data: object) => void;
+export type AdaptiveCardTransformFactory = (element: AdaptiveCardElementInfo, node: object, path: string) => AdaptiveCardTransform;
 
-    public readonly asObject: object;
-    public readonly asString: string;
+export interface AdaptiveCardElementInfo {
+    type: string;
+    factory?: AdaptiveCardTransformFactory;
+    isContainer?: boolean;
+    collection?: string;
+    property?: string;
+    required?: boolean;
+    itemTemplate?: object;
+}
+
+export class AdaptiveCardTemplate {
+    private transforms: AdaptiveCardTransform[];
+
+    public asObject: object;
+    public asString: string;
 
     constructor(card: string|object) {
         // Save card in both string & object form
@@ -89,6 +102,25 @@ export class AdaptiveCardTemplate {
                 this.parse(node[i], `${path}[${i}]`);
             }
         } else if (type == 'object') {
+            // Extract item template for containers
+            const id = node['id'];
+            let element: AdaptiveCardElementInfo = elements[node['type'] || ''];
+            if (id && element && element.isContainer) {
+                const collection = node[element.collection || element.property];
+                if (Array.isArray(collection) && collection.length > 0) {
+                    // Collections first item is the template
+                    const tmpl = collection[0];
+                    if (typeof tmpl == 'object') {
+                        // Remove template from collection
+                        collection.splice(0, 1);
+                        this.asString = JSON.stringify(this.asObject);
+
+                        // Update clone of element info to include item template
+                        element = Object.assign({}, element, { itemTemplate: tmpl });
+                    }
+                }
+            }
+
             // Parse child properties
             for (const prop in node) {
                 if (node.hasOwnProperty(prop)) {
@@ -97,8 +129,8 @@ export class AdaptiveCardTemplate {
             }
 
             // Add data bind transform
-            if (node.hasOwnProperty('id')) {
-                const xform = getDataBindTransform(node, path);
+            if (id && element && element.factory) {
+                const xform = element.factory(element, node, path);
                 if (xform) {
                     this.transforms.push(xform);
                 }
@@ -112,14 +144,19 @@ export class AdaptiveCardTemplate {
             }
         }
     }
+
+    static addElement(element: AdaptiveCardElementInfo): void {
+        elements[element.type] = element;
+    }
 }
 
-type TransformFunction = (card: object, data: object) => void;
+const elements: { [type: string]: AdaptiveCardElementInfo; } = {};
+
 type TextPart = (data: object) => string;
 
 const engine = new ExpressionEngine();
 
-function getTextTransform(text: string, path: string): TransformFunction|undefined {
+function getTextTransform(text: string, path: string): AdaptiveCardTransform|undefined {
     // Find text parts
     let inExpression = false;
     let expressionCount = 0;
@@ -209,64 +246,79 @@ function expressionTextPart(expression: string, path: string): TextPart {
     };
 }
 
-function getDataBindTransform(node: object, path: string): TransformFunction|undefined {
-    switch (node['type']) {
-        // Card Elements
-        case 'TextBlock': 
-            return bindStringProp('text', path, true);
-        case 'Image': 
-            return bindStringProp('url', path, true);
-        case 'Media': 
-            return bindMediaProp(path);
-        case 'RichTextBlock': 
-            return bindArrayProp('inlines', path);
-        case 'TextRun': 
-            return bindStringProp('text', path, true);
+// Card Elements
+AdaptiveCardTemplate.addElement({ type: 'TextBlock', property: 'text', factory: stringElement, required: true });
+AdaptiveCardTemplate.addElement({ type: 'Image', property: 'url', factory: stringElement, required: true });
+AdaptiveCardTemplate.addElement({ type: 'Media', factory: mediaElement });
+AdaptiveCardTemplate.addElement({ type: 'RichTextBlock', property: 'inlines', factory: arrayElement, required: true });
+AdaptiveCardTemplate.addElement({ type: 'TextRun', property: 'text', factory: stringElement, required: true });
 
-        // Containers
-        case 'ActionSet': 
-            return bindArrayProp('actions', path);
-        case 'Container': 
-            return bindArrayProp('items', path);
-        case 'ColumnSet': 
-            return bindArrayProp('columns', path);
-        case 'Column': 
-            return bindArrayProp('items', path);
-        case 'FactSet': 
-            return bindArrayProp('facts', path);
-        case 'ImageSet': 
-            return bindArrayProp('images', path);
+// Containers
+AdaptiveCardTemplate.addElement({ type: 'ActionSet', property: 'actions', factory: containerElement, isContainer: true });
+AdaptiveCardTemplate.addElement({ type: 'Container', property: 'items', factory: containerElement, isContainer: true });
+AdaptiveCardTemplate.addElement({ type: 'ColumnSet', property: 'columns', factory: containerElement, isContainer: true });
+AdaptiveCardTemplate.addElement({ type: 'Column', property: 'items', factory: containerElement, isContainer: true });
+AdaptiveCardTemplate.addElement({ type: 'FactSet', property: 'facts', factory: containerElement, isContainer: true });
+AdaptiveCardTemplate.addElement({ type: 'ImageSet', property: 'images', factory: containerElement, isContainer: true });
 
-        // Actions
-        case 'Action.OpenUrl': 
-            return bindStringProp('url', path);
-        case 'Action.Submit': 
-            return bindObjectProp(path);
-        case 'Action.ShowCard': 
-            return bindObjectProp(path);
-        case 'Action.ToggleVisibility': 
-            return bindObjectProp(path);
+// Actions
+AdaptiveCardTemplate.addElement({ type: 'Action.OpenUrl', property: 'url', factory: stringElement });
+AdaptiveCardTemplate.addElement({ type: 'Action.Submit', factory: objectElement });
+AdaptiveCardTemplate.addElement({ type: 'Action.ShowCard', factory: objectElement });
+AdaptiveCardTemplate.addElement({ type: 'Action.ToggleVisibility', factory: objectElement });
 
-        // Inputs
-        case 'Input.Text': 
-            return bindStringProp('value', path);
-        case 'Input.Number': 
-            return bindNumberProp('value', path);
-        case 'Input.Date': 
-            return bindStringProp('value', path);
-        case 'Input.Time': 
-            return bindStringProp('value', path);
-        case 'Input.Toggle': 
-            return bindInputToggleProp(path);
-        case 'Input.ChoiceSet': 
-            return bindStringProp('value', path);
+// Inputs
+AdaptiveCardTemplate.addElement({ type: 'Input.Text', property: 'value', factory: stringElement });
+AdaptiveCardTemplate.addElement({ type: 'Input.Number', property: 'value', factory: numberElement });
+AdaptiveCardTemplate.addElement({ type: 'Input.Date', property: 'value', factory: stringElement });
+AdaptiveCardTemplate.addElement({ type: 'Input.Time', property: 'value', factory: stringElement });
+AdaptiveCardTemplate.addElement({ type: 'Input.Toggle', property: 'value', factory: inputToggleElement });
+AdaptiveCardTemplate.addElement({ type: 'Input.ChoiceSet', property: 'value', factory: inputChoiceSetElement, isContainer: true, collection: 'choices' });
 
-        default:
-            return undefined;
+function containerElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
+    // Compile child template
+    const itemTemplate = element.itemTemplate ? new AdaptiveCardTemplate(element.itemTemplate) : undefined;
+    return (card, data) => {
+        resolveBinding(card, data, path, (node, value, type) => {
+            if (itemTemplate) {
+                // Render child items
+                let items: object[] = [];
+                if (typeof value == 'string') { value = value.split(/(?:,|;)/g) }
+                if (Array.isArray(value)) {
+                    for (let i = 0; i < value.length; i++) {
+                        items.push(itemTemplate.render({ value: value[i], index: i }));
+                    }
+                } else if (type == 'object') {
+                    items = [];
+                    for (const key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            items.push(itemTemplate.render({ value: value[key], index: key }));
+                        }
+                    }
+                }
+
+                // Update node and prune out template
+                if (items.length > 0) { node[element.collection || element.property] = items }
+            } else if (Array.isArray(value)) {
+                node[element.property] = value;
+            } else if (type == 'object') {
+                copyTo(value, node);
+            }
+        });
     }
 }
 
-function bindInputToggleProp(path: string): TransformFunction {
+function inputChoiceSetElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
+    // A choice is both an input and a container...
+    const input = stringElement(element, node, path);
+    const container = containerElement(element, node, path);
+    return (card, data) => {
+        input(card, data);
+        container(card, data);
+    };
+}
+
+function inputToggleElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
     return (card, data) => {
         resolveBinding(card, data, path, (node, value, type) => {
             if (type == 'object') {
@@ -278,7 +330,7 @@ function bindInputToggleProp(path: string): TransformFunction {
     }
 }
 
-function bindObjectProp(path: string): TransformFunction {
+function objectElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
     return (card, data) => {
         resolveBinding(card, data, path, (node, value, type) => {
             if (type == 'object') {
@@ -288,7 +340,7 @@ function bindObjectProp(path: string): TransformFunction {
     }
 }
 
-function bindMediaProp(path: string): TransformFunction {
+function mediaElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
     return (card, data) => {
         resolveBinding(card, data, path, (node, value, type) => {
             if (Array.isArray(value)) {
@@ -304,11 +356,11 @@ function bindMediaProp(path: string): TransformFunction {
     }
 }
 
-function bindArrayProp(prop: string, path: string): TransformFunction {
+function arrayElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
     return (card, data) => {
         resolveBinding(card, data, path, (node, value, type) => {
             if (Array.isArray(value)) {
-                node[prop] = value;
+                node[element.property] = value;
             } else if (type == 'object') {
                 copyTo(value, node);
             }
@@ -316,27 +368,27 @@ function bindArrayProp(prop: string, path: string): TransformFunction {
     }
 }
 
-function bindStringProp(prop: string, path: string, required = false): TransformFunction {
+function stringElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
     return (card, data) => {
         resolveBinding(card, data, path, (node, value, type) => {
             if (type == 'object') {
                 copyTo(value, node);
-            } else if (type == 'string' || required) {
-                node[prop] = value || '';
+            } else if (type == 'string' || element.required) {
+                node[element.property] = value || '';
             }
         });
     }
 }
 
-function bindNumberProp(prop: string, path: string): TransformFunction {
+function numberElement(element: AdaptiveCardElementInfo, node: object, path: string): AdaptiveCardTransform {
     return (card, data) => {
         resolveBinding(card, data, path, (node, value, type) => {
             if (type == 'object') {
                 copyTo(value, node);
             } else if (type == 'number') {
-                node[prop] = value;
+                node[element.property] = value;
             } else if (type == 'string') {
-                node[prop] = Number(value);
+                node[element.property] = Number(value);
             }
         });
     }
