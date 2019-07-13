@@ -25,6 +25,5 @@ export * from './replaceDialog';
 export * from './saveAdaptiveCardInput';
 export * from './sendActivity';
 export * from './sendAdaptiveCard';
-export * from './sendList';
 export * from './setProperty';
 export * from './translate';
