@@ -26,4 +26,5 @@ export * from './saveAdaptiveCardInput';
 export * from './sendActivity';
 export * from './sendAdaptiveCard';
 export * from './setProperty';
+export * from './showMemory';
 export * from './translate';
