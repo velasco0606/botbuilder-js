@@ -6,8 +6,7 @@
  * Licensed under the MIT License.
  */
 
-import { Configurable, TextPrompt } from 'botbuilder-dialogs';
-import { AdaptiveDialog, BeginDialog, SendActivity, TextInput, ConfirmInput, NumberInput, ChoiceInput, EndTurn, IfCondition, RegExpRecognizer, IntentRule, UnknownIntentRule, CancelAllDialogs, DeleteProperty, EditArray, EditSteps, EmitEvent, EndDialog, ForEach, ForEachPage, LogStep, RepeatDialog, ReplaceDialog, SendList, SetProperty } from 'botbuilder-dialogs-adaptive';
+import { AdaptiveDialog, SendActivity, TextInput, ConfirmInput, NumberInput, ChoiceInput, EndTurn, IfCondition, RegExpRecognizer, IntentRule, UnknownIntentRule, CancelAllDialogs, DeleteProperty, EditArray, EditSteps, EmitEvent, EndDialog, ForEach, ForEachPage, LogStep, RepeatDialog, ReplaceDialog, SetProperty } from 'botbuilder-dialogs-adaptive';
 import { ConfigurableTypeBuilder } from './configurableTypeBuilder';
 import { DefaultTypeBuilder } from './defaultTypeBuilder';
 import { ITypeBuilder } from './typeBuilder';
@@ -83,7 +82,6 @@ import { CustomTypeBuilder } from './customTypeBuilder';
         this.register('Microsoft.RepeatDialog', new ConfigurableTypeBuilder(RepeatDialog));
         this.register('Microsoft.ReplaceDialog', new ConfigurableTypeBuilder(ReplaceDialog));
         this.register('Microsoft.SendActivity', new ConfigurableTypeBuilder(SendActivity));
-        this.register('Microsoft.SendList', new ConfigurableTypeBuilder(SendList));
         this.register('Microsoft.SetProperty', new ConfigurableTypeBuilder(SetProperty));
         
         // Dialogs
