@@ -134,6 +134,7 @@ export class ExpressionType {
     public static readonly GetProperty: string = 'getProperty';
     public static readonly Coalesce: string = 'coalesce';
     public static readonly XPath: string = 'xPath';
+    public static readonly SetPathToValue: string = 'setPathToValue';
 
     // URI parsing functions
     public static readonly UriHost: string = 'uriHost';
@@ -147,11 +148,6 @@ export class ExpressionType {
     public static readonly IsMatch: string = 'isMatch';
 
     // Short hand functions
-    public static readonly Intent: string = 'intent';
-    public static readonly Entity: string = 'entity';
-    public static readonly Dialog: string = 'dialog';
     public static readonly SimpleEntity: string = 'simpleEntity';
-    public static readonly Instance: string = 'instance';
-    public static readonly Option: string = 'option';
     public static readonly Callstack: string = 'callstack';
 }

@@ -10,7 +10,6 @@ const StaticCheckExceptionData  = [
     "ErrorTemplateParameters.lg",
     "NoNormalTemplateBody.lg",
     "ConditionFormatError.lg",
-    "ErrorEscapeCharacter.lg",
     "NoTemplateRef.lg",
     "TemplateParamsNotMatchArgsNum.lg",
     "ErrorSeperateChar.lg",
@@ -50,7 +49,7 @@ describe('LGExceptionTest', function () {
     it('WariningTest', function () {
         for (const testDateItem of StaticCheckWariningData ) {
             var engine = new TemplateEngine().addFile(GetExampleFilePath(testDateItem));
-            var report = new StaticChecker(engine.templates).Check();
+            var report = StaticChecker.checkTemplates(engine.templates);
             assert.strictEqual(report.length > 0, true);
             report.forEach(e => assert.strictEqual(e.Severity === DiagnosticSeverity.Warning, true));
         }
@@ -126,5 +125,9 @@ describe('LGExceptionTest', function () {
                 assert.fail(errorMessage);
             }    
         }
+    });
+
+    it('AddTextWithWrongId', function() {
+        assert.throws(() => { new TemplateEngine().addText("# t \n - hi", "a.lg"); }, Error);
     });
 });

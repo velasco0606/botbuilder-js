@@ -145,7 +145,7 @@ describe('LG', function () {
     });
 
     it('TestBasicInlineTemplate', function () {
-        var emptyEngine = new TemplateEngine().addText("", "test", undefined);
+        var emptyEngine = new TemplateEngine();
         assert.strictEqual(emptyEngine.evaluate("Hi"), "Hi", emptyEngine.evaluate("Hi"));
         assert.strictEqual(emptyEngine.evaluate("Hi", ""), "Hi", emptyEngine.evaluate("Hi", ""));
 
@@ -192,14 +192,23 @@ describe('LG', function () {
     it('TestTemplateRef', function () {
         var engine = new TemplateEngine().addFile(GetExampleFilePath("TemplateRef.lg"));
         var scope = { time: "morning", name: "Dong Lei" };
-        var evaled = engine.evaluateTemplate("Hello", scope);
-        assert.strictEqual(evaled, "Good morning Dong Lei", `Evaled is ${evaled}`);
+        var evaled1 = engine.evaluateTemplate("Hello", scope);
+        assert.strictEqual(evaled1, "Good morning Dong Lei", `Evaled is ${evaled1}`);
+
+        var evaled2 = engine.evaluateTemplate("Hello2", scope);
+        assert.strictEqual(evaled2, "Good morning Dong Lei", `Evaled is ${evaled2}`);
+
+        var evaled3 = engine.evaluateTemplate("Hello3", scope);
+        assert.strictEqual(evaled3, "Good morning Dong Lei", `Evaled is ${evaled3}`);
     });
 
     it('TestEscapeCharacter', function () {
         var engine = new TemplateEngine().addFile(GetExampleFilePath("EscapeCharacter.lg"));
         var evaled = engine.evaluateTemplate("wPhrase", null);
         assert.strictEqual(evaled, "Hi \r\n\t[]{}\\", "Happy path failed.");
+
+        evaled = engine.evaluateTemplate("otherEscape", null);
+        assert.strictEqual(evaled, "Hi \\y \\", "Happy path failed.");
     });
 
     it('TestAnalyzer', function () {
@@ -294,7 +303,7 @@ describe('LG', function () {
 
         // Assert 6.lg is imported only once when there are several relative paths which point to the same file.
         // Assert import cycle loop is handled well as expected when a file imports itself.
-        assert.strictEqual(engine.templates.length, 11);
+        assert.strictEqual(engine.templates.length, 14);
 
         const options1 = ["Hi", "Hello", "Hey"];
         var evaled = engine.evaluateTemplate("basicTemplate");
@@ -312,23 +321,12 @@ describe('LG', function () {
         evaled = engine.evaluateTemplate("basicTemplate2");
         assert.strictEqual(options4.includes(evaled), true, `Evaled is ${evaled}`);
 
-        // Assert 6.lg of absolute path is imported from text.
-        var importedFilePath = GetExampleFilePath("6.lg");
-        engine = new TemplateEngine().addText(`# basicTemplate\r\n- Hi\r\n- Hello\r\n[import](${importedFilePath})`, 'test', undefined);
-
-        assert.strictEqual(engine.templates.length, 8);
-
-        evaled = engine.evaluateTemplate("basicTemplate");
-        assert.strictEqual(options1.includes(evaled), true, `Evaled is ${evaled}`);
-
-        evaled = engine.evaluateTemplate("welcome");
-        assert.strictEqual(options2.includes(evaled), true, `Evaled is ${evaled}`);
-
-        evaled = engine.evaluateTemplate("welcome", { userName: "DL" });
-        assert.strictEqual(options3.includes(evaled), true, `Evaled is ${evaled}`);
+        const options5 = ["Hi 2", "Hello 2"];
+        evaled = engine.evaluateTemplate("template3");
+        assert.strictEqual(options5.includes(evaled), true, `Evaled is ${evaled}`);
 
         // Assert 6.lg of relative path is imported from text.
-        engine = new TemplateEngine().addText(`# basicTemplate\r\n- Hi\r\n- Hello\r\n[import](./tests/testData/examples/6.lg)`, 'test', undefined);
+        engine = new TemplateEngine().addText(`# basicTemplate\r\n- Hi\r\n- Hello\r\n[import](./6.lg)`, GetExampleFilePath("xx.lg"));
 
         assert.strictEqual(engine.templates.length, 8);
 
@@ -346,7 +344,7 @@ describe('LG', function () {
         let engine = new TemplateEngine().addFiles([GetExampleFilePath("importExamples/import.lg"), GetExampleFilePath("importExamples/import2.lg")]);
 
         // Assert 6.lg is imported only once and no exceptions are thrown when it is imported from multiple files.
-        assert.strictEqual(engine.templates.length, 13);
+        assert.strictEqual(engine.templates.length, 14);
 
         const options1 = ["Hi", "Hello", "Hey"];
         var evaled = engine.evaluateTemplate("basicTemplate");
@@ -398,5 +396,48 @@ describe('LG', function () {
 
         var evaled = engine.evaluateTemplate('wPhrase', {name: 'morethanfive'});
         assert.strictEqual(evaled, 'Hi');
+    });
+
+    it('TestEvalExpression', function () {
+        var engine = new TemplateEngine().addFile(GetExampleFilePath("EvalExpression.lg"));
+        const userName = "MS";
+        var evaled = engine.evaluateTemplate('template1', {userName});
+        assert.strictEqual(evaled, 'Hi MS', `Evaled is ${evaled}`);
+
+        evaled = engine.evaluateTemplate('template2', {userName});
+        assert.strictEqual(evaled, 'Hi MS', `Evaled is ${evaled}`);
+
+        evaled = engine.evaluateTemplate('template3', {userName});
+        assert.strictEqual(evaled, 'HiMS', `Evaled is ${evaled}`);
+
+        const options1 = ["\r\nHi MS\r\n", "\nHi MS\n"];
+        evaled = engine.evaluateTemplate("template4", { userName});
+        assert.strictEqual(options1.includes(evaled), true, `Evaled is ${evaled}`);
+
+        const options2 = ["\r\nHiMS\r\n", "\nHiMS\n"];
+        evaled = engine.evaluateTemplate("template5", { userName});
+        assert.strictEqual(options2.includes(evaled), true, `Evaled is ${evaled}`);
+
+        evaled = engine.evaluateTemplate('template6', {userName});
+        assert.strictEqual(evaled, 'goodmorning', `Evaled is ${evaled}`);
+    });
+
+    it('TestTemplateAsFunction', function () {
+        var engine = new TemplateEngine().addFile(GetExampleFilePath("TemplateAsFunction.lg"));
+
+        var evaled = engine.evaluateTemplate('Test2');
+        assert.strictEqual(evaled, 'hello world', `Evaled is ${evaled}`);
+
+        evaled = engine.evaluateTemplate('Test3');
+        assert.strictEqual(evaled, 'hello world', `Evaled is ${evaled}`);
+
+        evaled = engine.evaluateTemplate('Test4');
+        assert.strictEqual(evaled.trim(), 'hello world', `Evaled is ${evaled}`);
+
+        evaled = engine.evaluateTemplate('dupNameWithTemplate');
+        assert.strictEqual(evaled, 'calculate length of ms by user\'s template', `Evaled is ${evaled}`);
+
+        evaled = engine.evaluateTemplate('dupNameWithBuiltinFunc');
+        assert.strictEqual(evaled, '2', `Evaled is ${evaled}`);
     });
 });

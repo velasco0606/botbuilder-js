@@ -6,9 +6,9 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { BuiltInFunctions } from './buildInFunction';
+import { BuiltInFunctions } from './builtInFunction';
 import { Constant } from './constant';
-import { Expression } from './expression';
+import { Expression, ReturnType } from './expression';
 import { ExpressionType } from './expressionType';
 
 /**
@@ -76,7 +76,11 @@ export class Extensions {
                 if (path !== undefined) {
                     if (children[1] instanceof Constant) {
                         const cnst: Constant = <Constant>children[1];
-                        path += `[${cnst.Value}]`;
+                        if (cnst.ReturnType === ReturnType.String) {
+                            path += `.${cnst.Value}`;
+                        } else {
+                            path += `[${cnst.Value}]`;
+                        }
                     } else {
                         references.add(path);
                     }
@@ -84,15 +88,6 @@ export class Extensions {
                 const idxPath: string = Extensions.ReferenceWalk(children[1], references, extension);
                 if (idxPath !== undefined) {
                     references.add(idxPath);
-                }
-            } else if (BuiltInFunctions.PrefixsOfShorthand.has(expression.Type)) {
-                // Shorthand
-                const shorthandName: string = (children[0] as Constant).Value.toString();
-                if (shorthandName !== undefined) {
-                    const prefixStr: string = BuiltInFunctions.PrefixsOfShorthand.get(expression.Type);
-                    const reference: string = prefixStr + shorthandName;
-
-                    references.add(reference);
                 }
             } else {
                 for (const child of expression.Children) {
@@ -123,13 +118,42 @@ export class Extensions {
         // tslint:disable-next-line: prefer-const
         let error: string;
         // todo, Is there a better way to access value, or any case is not listed below?
-        if (instance instanceof Map && <Map<string, any>>instance.get(property) !== undefined) {
-            value = <Map<string, any>>instance.get(property);
+        if (instance instanceof Map && <Map<string, any>>instance !== undefined) {
+            const instanceMap: Map<string, any> = <Map<string, any>>instance;
+            if (instanceMap.has(property)) {
+                value = instanceMap.get(property);
+            } else {
+                const prop: string = Array.from(instanceMap.keys()).find((k: string) => k.toLowerCase() === property.toLowerCase());
+                if (prop !== undefined) {
+                    value = instanceMap.get(prop);
+                }
+            }
         } else {
-            value = instance[property];
+            const prop: string = Object.keys(instance).find((k: string) => k.toLowerCase() === property.toLowerCase());
+            if (prop !== undefined) {
+                value = instance[prop];
+            }
         }
 
         return { value, error };
+    }
+
+    /**
+     * Set a property in Map or Object.
+     * @param instance Instance to set.
+     * @param property Property to set.
+     * @param value Value to set.
+     * @returns set value.
+     */
+    public static SetProperty(instance: any, property: string, value: any): any {
+        const result: any = value;
+        if (instance instanceof Map) {
+            instance.set(property, value);
+        } else {
+            instance[property] = value;
+        }
+
+        return result;
     }
 
     /**

@@ -328,6 +328,7 @@ const dataSource = [
   ["first(nestedItems).x", 1, ["nestedItems"]],
   ["join(items,',')", "zero,one,two"],
   ["join(createArray('a', 'b', 'c'), '.')", "a.b.c"],
+  ["join(createArray('a', 'b', 'c'), ',', ' and ')", "a,b and c"],
   ["join(foreach(items, item, item), ',')", "zero,one,two"],
   ["join(foreach(nestedItems, i, i.x + first(nestedItems).x), ',')", "2,3,4", ["nestedItems"]],
   ["join(foreach(items, item, concat(item, string(count(items)))), ',')", "zero3,one3,two3", ["items"]],
@@ -364,25 +365,37 @@ const dataSource = [
   ["@city == 'Bellevue'", false, ["turn.recognized.entities.city"]],
   ["@city", "Seattle", ["turn.recognized.entities.city"]],
   ["@city == 'Seattle'", true, ["turn.recognized.entities.city"]],
+  ["@ordinal[1]", "2", ["turn.recognized.entities.ordinal"]],
+  ["@['city']", "Seattle", ["turn.recognized.entities.city"]],
+  ["@[concat('cit', 'y')]", "Seattle", ["turn.recognized.entities"]],
+  ["@[concat(cit, y)]", "Seattle", ["turn.recognized.entities","cit","y"]],
   ["#BookFlight == 'BookFlight'", true, ["turn.recognized.intents.BookFlight"]],
+  ["#BookHotel[1].Where", "Kirkland", ["turn.recognized.intents.BookHotel[1].Where"]],
   ["exists(#BookFlight)", true, ["turn.recognized.intents.BookFlight"]],
   ["$title", "Dialog Title", ["dialog.title"]],
   ["$subTitle", "Dialog Sub Title", ["dialog.subTitle"]],
   ["~xxx", "instance", ["dialog.instance.xxx"]],
+  ["~['yyy'].instanceY", "instanceY", ["dialog.instance.yyy.instanceY"]],
   ["%xxx", "options", ["dialog.options.xxx"]],
+  ["%['xxx']", "options", ["dialog.options.xxx"]],
+  ["%yyy[1]", "optionY2", ["dialog.options.yyy[1]"]],
   ["^x", 3],
   ["^y", 2],
   ["^z", 1],
-  ["count(@@CompositeList1) == 1 && count(@@CompositeList1[0]) == 1", true, ["turn.recognized.entities.CompositeList1"]],
+  ["count(@@CompositeList1) == 1 && count(@@CompositeList1[0]) == 1", true, ["turn.recognized.entities.CompositeList1", "turn.recognized.entities.CompositeList1[0]"]],
   ["count(@CompositeList2) == 2 && (@CompositeList2)[0] === 'firstItem'", true, ["turn.recognized.entities.CompositeList2"]],
 
   // Memory access tests
   ["getProperty(bag, concat('na','me'))", "mybag"],
+  ["getProperty(bag, 'Name')", "mybag"],
+  ["getProperty(bag.set, 'FOUR')", 4.0],
   ["items[2]", "two", ["items[2]"]],
   ["bag.list[bag.index - 2]", "blue", ["bag.list", "bag.index"]],
   ["items[nestedItems[1].x]", "two", ["items", "nestedItems[1].x"]],
   ["bag['name']", "mybag"],
   ["bag[substring(concat('na','me','more'), 0, length('name'))]", "mybag"],
+  ["bag['NAME']", "mybag"],
+  ["bag.set[concat('Fo', 'UR')]", 4.0],
   ["getProperty(undefined, 'p')", undefined],
   ["(getProperty(undefined, 'p'))[1]", undefined],
 
@@ -419,6 +432,19 @@ const dataSource = [
   ["isMatch('12abc', '([0-9]+)([a-z]+)([0-9]+)')", false], // "(...)" (simple group)
   [`isMatch('a', '\\w{1}')`, true], // "\w" (match [a-zA-Z0-9_])
   [`isMatch('1', '\\d{1}')`, true], // "\d" (match [0-9])
+
+  // SetPathToValue tests
+  ["setPathToValue(@@blah.woof, 1+2) + @@blah.woof", 6],
+  ["setPathToValue(path.simple, 3) + path.simple", 6],
+  ["setPathToValue(path.simple, 5) + path.simple", 10],
+  ["setPathToValue(path.array[0], 7) + path.array[0]", 14],
+  ["setPathToValue(path.array[1], 9) + path.array[1]", 18],
+  ["setPathToValue(path.darray[2][0], 11) + path.darray[2][0]", 22],
+  ["setPathToValue(path.darray[2][3].foo, 13) + path.darray[2][3].foo)", 26],
+  ["setPathToValue(path.overwrite, 3) + setPathToValue(path.overwrite[0], 4) + path.overwrite[0]", 11],
+  ["setPathToValue(path.overwrite[0], 3) + setPathToValue(path.overwrite, 4) + path.overwrite", 11],
+  ["setPathToValue(path.overwrite.prop, 3) + setPathToValue(path.overwrite, 4) + path.overwrite", 11],
+  ["setPathToValue(path.overwrite.prop, 3) + setPathToValue(path.overwrite[0], 4) + path.overwrite[0]", 11],
 ];
 
 const scope = {
@@ -426,6 +452,8 @@ const scope = {
   two: 2.0,
   hello: "hello",
   world: "world",
+  cit: "cit",
+  y: "y",
   istrue: true,
   nullObj: undefined,
   bag:
@@ -472,14 +500,26 @@ const scope = {
       },
       intents:
       {
-        BookFlight: "BookFlight"
+        BookFlight: "BookFlight",
+        BookHotel :[
+          {
+            Where: "Bellevue",
+            Time : "Tomorrow",
+            People : "2"
+          },
+          {
+            Where: "Kirkland",
+            Time : "Today",
+            People : "4"
+          }
+        ]
       }
     }
   },
   dialog:
   {
-    instance: { xxx: "instance" },
-    options: { xxx: "options" },
+    instance: { xxx: "instance", yyy : {instanceY :"instanceY"} },
+    options: { xxx: "options",  yyy : ["optionY1", "optionY2" ] },
     title: "Dialog Title",
     subTitle: "Dialog Sub Title"
   },

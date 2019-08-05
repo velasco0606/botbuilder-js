@@ -236,11 +236,11 @@ const badExpressions =
   "convertFromUTC('2018-02-02T02:00:00.000Z', 'Pacific Time')", // invalid timezone
   "convertToUTC(notValidTimestamp, 'Pacific Standard Time')",  // invalid timestamp
   "convertToUTC('2018-02-02T02:00:00.000', 'Pacific Time')", // invalid timezone
-  "startOfDay(timeStamp, 'A')", // invalid format
+  //"startOfDay(timeStamp, 'A')", // invalid format, due to change of moment package, this will no longer throw exception
   "startOfDay(notValidTimeStamp)", // invalid timestamp
-  "startOfHour(timeStamp, 'A')", // invalid format
+  //"startOfHour(timeStamp, 'A')", // invalid format, due to change of moment package, this will no longer throw exception
   "startOfHour(notValidTimeStamp)", // invalid timestamp
-  "startOfMonth(timeStamp, 'A')", // invalid format
+  //"startOfMonth(timeStamp, 'A')", // invalid format, due to change of moment package, this will no longer throw exception
   "startOfMonth(notValidTimeStamp)", // invalid timestamp
   "ticks(notValidTimeStamp)", // not valid timestamp
   "ticks()", // should have one parameters
@@ -259,11 +259,10 @@ const badExpressions =
   "empty(1,2)", //should have two params
   "first(items,2)", //should have 1 param
   "last(items,2)", //should have 1 param
-  "join(items, 'p1', 'p2','p3')",//builtin function should have 3 params, 
-  //method extension should have 2-3 params
+  "join(items, 'p1', 'p2','p3')",//builtin function should have 2-3 params, 
   "join(hello, 'hi')",// first param must list
   "join(items, 1)",// second param must string 
-  "join(items, 1)",// second param must string 
+  "join(items, '1', 2)",// second param must string 
   "foreach(hello, item, item)",// first arg is not list
   "foreach(items, item)",//should have three parameters
   "foreach(items, item, item2, item3)",//should have three parameters
@@ -323,8 +322,14 @@ const badExpressions =
   "xPath(xmlStr)", // should have two params
   "xPath(xmlStr, 'getTotal')", // invalid xpath query
 
+  // Short Hand Expression
+  "%.xxx", // not supported shorthand pattern
+  "@[city]", // city is not provided.
+  "@[0]", // entities is not a collection.
+
   // Memory access test
   "getProperty(bag, 1)",// second param should be string
+  "bag[1]",// first param should be string
   "Accessor(1)",// first param should be string
   "Accessor(bag, 1)", // second should be object
   "one[0]",  // one is not list
@@ -336,6 +341,11 @@ const badExpressions =
   "isMatch('abC', one)",// second param should be string
   "isMatch(1, '^[a-z]+$')", // first param should be string
   "isMatch('abC', '^[a-z+$')",// bad regular expression
+
+  // SetPathToValue tests
+  "setPathToValue(@foo, 3)", // Cannot set simple entities
+  "setPathToValue(2+3, 4)", // Not a real path
+  "setPathToValue(a)" // Missing value
 ];
 
 const scope = {
@@ -370,13 +380,15 @@ const scope = {
   relativeUri: "../catalog/shownew.htm?date=today",
   turn:
   {
-    entities:
-    {
-      city: "Seattle"
-    },
-    intents:
-    {
-      BookFlight: "BookFlight"
+    recognized: {
+      entities:
+      {
+        city: "Seattle"
+      },
+      intents:
+      {
+        BookFlight: "BookFlight"
+      }
     }
   },
   dialog:

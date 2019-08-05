@@ -2,41 +2,42 @@ const { MSLGTool } = require('../');
 const assert = require('assert');
 const fs = require('fs');
 
-function GetExampleFile(fileName){
-    const text = fs.readFileSync(`${ __dirname }/testData/mslgTool/`+ fileName, 'utf-8');
-    return text;
+function GetErrors(mslgtool, fileName){
+    const path = `${ __dirname }/testData/mslgTool/`+ fileName;
+    const text = fs.readFileSync(path, 'utf-8');
+    return mslgtool.ValidateFile(text, path);
+  
 }
 
 describe('MSLGTool', function () {
     it('TestValidateReturnStaticCheckerErrors', function () {
-        let errors = new MSLGTool().ValidateFile(GetExampleFile('StaticCheckerErrors.lg'));
-        let regexp = new RegExp('\r\n', 'g');
+        let errors = GetErrors(new MSLGTool(),'StaticCheckerErrors.lg');
         assert.strictEqual(errors.length,5)
-        assert.strictEqual(errors[0], "[Error] line 1:0 - line 1:10: error message: There is no template body in template template");
-        assert.strictEqual(errors[1].replace(regexp, '\n'), "[Warning] line 5:0 - line 5:20: error message: condition is not end with else: \'-IF:{foo == \'bar\'}\n-ok\n\'")
-        assert.strictEqual(errors[2].replace(regexp, '\n'), "[Error] line 9:0 - line 9:14: error message: control flow is not starting with switch: \'-CASE:{\'bar\'}\n-bar   \n\'")
-        assert.strictEqual(errors[3].replace(regexp, '\n'), "[Warning] line 9:0 - line 9:14: error message: control flow is not ending with default statement: \'-CASE:{\'bar\'}\n-bar   \n\'")
-        assert.strictEqual(errors[4].replace(regexp, '\n'), "[Warning] line 14:0 - line 14:10: error message: control flow should have at least one case statement: \'-SWITCH:{foo}\n-default:\n-bar<EOF>\'")
+        assert(errors[0].includes("There is no template body in template template"));
+        assert(errors[1].includes("condition is not end with else"))
+        assert(errors[2].includes("control flow is not starting with switch"))
+        assert(errors[3].includes("control flow is not ending with default statement"))
+        assert(errors[4].includes("control flow should have at least one case statement"))
     });
 
     it('TestValidateReturnAntlrParseError', function () {
-        let errors = new MSLGTool().ValidateFile(GetExampleFile('AntlrParseError.lg'));
+        let errors = GetErrors(new MSLGTool(),'AntlrParseError.lg');
         assert.strictEqual(errors.length, 1);
-        assert.strictEqual(errors[0], "[Error] line 1:18 - line 1:24: syntax error message: mismatched input 'param2' expecting {<EOF>, NEWLINE}");
+        assert(errors[0].includes("syntax error message: mismatched input 'param2' expecting {<EOF>, NEWLINE}"));
     });
 
     it('TestValidateReturnNoErrors', function () {
-        let errors = new MSLGTool().ValidateFile(GetExampleFile('ValidFile.lg'));
+        let errors = GetErrors(new MSLGTool(),'ValidFile.lg');
         assert.strictEqual(errors.length, 0);
     });
 
     it('TestCollateTemplates', function () {
         const mslgTool = new MSLGTool();
-        let errors = mslgTool.ValidateFile(GetExampleFile('CollateFile1.lg'));
+        let errors = GetErrors(mslgTool, 'CollateFile1.lg');
         assert.strictEqual(errors.length, 0);
-        errors = mslgTool.ValidateFile(GetExampleFile('CollateFile2.lg'));
+        errors = GetErrors(mslgTool, 'CollateFile2.lg');
         assert.strictEqual(errors.length, 0);
-        errors = mslgTool.ValidateFile(GetExampleFile('CollateFile3.lg'));
+        errors =GetErrors(mslgTool, 'CollateFile3.lg');
         assert.strictEqual(errors.length, 0);
         assert.strictEqual(mslgTool.CollationMessages.length, 0);
         assert.strictEqual(mslgTool.NameCollisions.length, 3);
@@ -48,7 +49,7 @@ describe('MSLGTool', function () {
 
     it('TestExpandTemplate', function () {
         const mslgTool = new MSLGTool();
-        let errors = mslgTool.ValidateFile(GetExampleFile('CollateFile1.lg'));
+        let errors = GetErrors(mslgTool, 'CollateFile1.lg');
         assert.strictEqual(errors.length, 0);
         let expandedTemplate = mslgTool.ExpandTemplate('FinalGreeting', undefined);
         assert.strictEqual(expandedTemplate.length, 4);
@@ -60,7 +61,7 @@ describe('MSLGTool', function () {
 
     it('TestExpandTemplateWithScope', function() {
         const mslgTool = new MSLGTool();
-        let errors = mslgTool.ValidateFile(GetExampleFile('CollateFile3.lg'));
+        let errors = GetErrors(mslgTool, 'CollateFile3.lg');
         assert.strictEqual(errors.length, 0);
         let expandedTemplate = mslgTool.ExpandTemplate('TimeOfDayWithCondition', { time: 'evening' });
         assert.strictEqual(expandedTemplate.length, 2);
@@ -79,7 +80,7 @@ describe('MSLGTool', function () {
 
     it('TestExpandTemplateWithRef', function() {
         const mslgTool = new MSLGTool();
-        let errors = mslgTool.ValidateFile(GetExampleFile('ValidFile.lg'));
+        let errors = GetErrors(mslgTool, 'ValidFile.lg');
         assert.strictEqual(errors.length, 0);
         const alarms = [
             {
@@ -99,7 +100,7 @@ describe('MSLGTool', function () {
 
     it('TestExpandTemplateWithRefInForeach', function() {
         const mslgTool = new MSLGTool();
-        let errors = mslgTool.ValidateFile(GetExampleFile('ValidFile.lg'));
+        let errors = GetErrors(mslgTool, 'ValidFile.lg');
         assert.strictEqual(errors.length, 0);
         const alarms = [
             {
@@ -118,7 +119,7 @@ describe('MSLGTool', function () {
 
     it('TestExpandTemplateWithRefInMultiLine', function() {
         const mslgTool = new MSLGTool();
-        let errors = mslgTool.ValidateFile(GetExampleFile('ValidFile.lg'));
+        let errors = GetErrors(mslgTool, 'ValidFile.lg');
         assert.strictEqual(errors.length, 0);
         const alarms = [
             {

@@ -136,12 +136,6 @@ export class Evaluator extends AbstractParseTreeVisitor<string> implements LGFil
             return this.currentTarget().Scope;
         }
 
-        if (args.length === 1 && parameters.length === 0) {
-            // Special case, if no parameters defined, and only one arg, don't wrap
-            // this is for directly calling an parameterized template
-            return args[0];
-        }
-
         if (parameters !== undefined && (args === undefined || parameters.length !== args.length)) {
             throw new Error(`The length of required parameters does not match the length of provided parameters.`);
         }
@@ -161,7 +155,7 @@ export class Evaluator extends AbstractParseTreeVisitor<string> implements LGFil
         let idx: number = 0;
         for (const caseNode of switchcaseNodes) {
             if (idx === 0) {
-                idx = idx + 1;
+                idx++;
                 continue; //skip the first node which is a switch statement
             }
             if (idx === length - 1 && caseNode.switchCaseStat().DEFAULT() !== undefined) {
@@ -179,7 +173,7 @@ export class Evaluator extends AbstractParseTreeVisitor<string> implements LGFil
                 return this.visit(caseNode.normalTemplateBody());
             }
 
-            idx = idx + 1;
+            idx++;
         }
 
         return undefined;
@@ -264,28 +258,18 @@ export class Evaluator extends AbstractParseTreeVisitor<string> implements LGFil
     private EvalTemplateRef(exp: string) : string {
         exp = exp.replace(/(^\[*)/g, '')
                 .replace(/(\]*$)/g, '');
-        const argsStartPos: number = exp.indexOf('(');
-        if (argsStartPos > 0) {// Do have args
 
-            // EvaluateTemplate all arguments using ExpressoinEngine
-            const argsEndPos: number = exp.lastIndexOf(')');
-            if (argsEndPos < 0 || argsEndPos < argsStartPos + 1) {
-                throw new Error(`Not a valid template ref: ${exp}`);
+        if (exp.indexOf('(') < 0) {
+            if (exp in this.TemplateMap) {
+                exp = exp.concat('(')
+                        .concat(this.TemplateMap[exp].Parameters.join())
+                        .concat(')');
+            } else {
+                exp = exp.concat('()');
             }
-
-            const argExpressions: string[] = exp.substr(argsStartPos + 1, argsEndPos - argsStartPos - 1).split(',');
-            const args: string[] = argExpressions.map((x: string) => this.EvalByExpressionEngine(x, this.currentTarget().Scope).value);
-
-            // Construct a new Scope for this template reference
-            // Bind all arguments to parameters
-            const templateName: string = exp.substr(0, argsStartPos);
-
-            const newScope: any = this.ConstructScope(templateName, args);
-
-            return this.EvaluateTemplate(templateName, newScope);
         }
 
-        return this.EvaluateTemplate(exp, this.currentTarget().Scope);
+        return this.EvalExpression(exp);
     }
 
     private EvalMultiLineText(exp: string): string {
