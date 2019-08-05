@@ -98,7 +98,8 @@ export class ComponentDialog<O extends object = {}> extends DialogContainer<O> {
             }
             // Return result to calling dialog
             return await this.endComponent(outerDC, turnResult.result);
-        } 
+        }
+
         // Just signal end of turn
         return Dialog.EndOfTurn;
     }
@@ -117,10 +118,10 @@ export class ComponentDialog<O extends object = {}> extends DialogContainer<O> {
             }
             // Return result to calling dialog
             return await this.endComponent(outerDC, turnResult.result);
-        } else {
-            // Just signal end of turn
-            return Dialog.EndOfTurn;
         }
+
+        // Just signal end of turn
+        return Dialog.EndOfTurn;
     }
 
     public async resumeDialog(dc: DialogContext, reason: DialogReason, result?: any): Promise<DialogTurnResult> {
