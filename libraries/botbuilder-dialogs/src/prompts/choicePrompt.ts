@@ -69,7 +69,7 @@ export class ChoicePrompt extends Prompt<FoundChoice> {
     }
 
     protected onComputeID(): string {
-        return `choicePrompt[${this.bindingPath()}]`;
+        return `choicePrompt`;
     }
 
     protected async onPrompt(context: TurnContext, state: any, options: PromptOptions, isRetry: boolean): Promise<void> {

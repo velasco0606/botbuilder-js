@@ -81,7 +81,7 @@ export class ComponentDialog<O extends object = {}> extends DialogContainer<O> {
     protected initialDialogId: string;
 
     protected onComputeID(): string {
-        return `component[${this.bindingPath()}]`;
+        return `component`;
     }
 
     public async beginDialog(outerDC: DialogContext, options?: O): Promise<DialogTurnResult> {
@@ -156,7 +156,7 @@ export class ComponentDialog<O extends object = {}> extends DialogContainer<O> {
     }
 
     public createChildContext(dc: DialogContext): DialogContext | undefined {
-        const childDC = this.createInnerDC(dc.context, dc.activeDialog, dc.state.user, dc.state.conversation);
+        const childDC = this.createInnerDC(dc.context, dc.activeDialog);
         childDC.parent = dc;
         return childDC.stack.length > 0 ? childDC : undefined;
     }
@@ -258,10 +258,10 @@ export class ComponentDialog<O extends object = {}> extends DialogContainer<O> {
         return this._telemetryClient;
     }
 
-    private createInnerDC(context: TurnContext, instance: DialogInstance, userState?: StateMap, conversationState?: StateMap): DialogContext {
+    private createInnerDC(context: TurnContext, instance: DialogInstance): DialogContext {
         const state: DialogState = instance.state[PERSISTED_DIALOG_STATE];
         if (!Array.isArray(state.dialogStack)) { state.dialogStack = [] }
-        const innerDC: DialogContext = new DialogContext(this.dialogs, context, state, userState || new StateMap({}), conversationState || new StateMap({}));
+        const innerDC: DialogContext = new DialogContext(this.dialogs, context, state);
         return innerDC;
     }
 }

@@ -90,7 +90,7 @@ export class WaterfallDialog<O extends object = {}> extends Dialog<O> {
     }
 
     protected onComputeID(): string {
-        return `waterfall[${this.bindingPath()}]`;
+        return `waterfall`;
     }
 
     /**

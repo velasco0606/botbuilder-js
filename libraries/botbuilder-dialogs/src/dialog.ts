@@ -154,10 +154,6 @@ export interface DialogConfiguration {
 
     tags?: string[];
 
-    inputBindings?: { [option:string]: string; };
-
-    outputBinding?: string;
-
     telemetryClient?: BotTelemetryClient;
 }
 
@@ -181,18 +177,6 @@ export abstract class Dialog<O extends object = {}> extends Configurable {
      * (Optional) if true, the dialog will inherit its parents state.
      */
     public inheritState = false;
-
-    /**
-     * (Optional) JSONPath expression for the memory slots to bind the dialogs options to on a 
-     * call to `beginDialog()`. 
-     */
-    public readonly inputProperties: { [option:string]: string; } = {};
-
-    /**
-     * (Optional) JSONPath expression for the memory slot to bind the dialogs result to when 
-     * `endDialog()` is called.
-     */
-    public outputProperty: string;
 
     /**
      * The telemetry client for logging events.
@@ -302,6 +286,18 @@ export abstract class Dialog<O extends object = {}> extends Configurable {
     public async onDialogEvent(dc: DialogContext, event: DialogEvent): Promise<boolean> {
         // Before bubble
         let handled = await this.onPreBubbleEvent(dc, event);
+
+        // Call legacy methods as needed
+        if (!handled) {
+            switch (event.name) {
+                case 'repromptDialog':
+                    await this.repromptDialog(dc.context, dc.activeDialog);
+                    break;
+                case 'dialogEnded':
+                    await this.endDialog(dc.context, dc.activeDialog, event.value);
+                    break;
+            }
+        }
         
         // Bubble as needed
         if (!handled && event.bubble && dc.parent) {
@@ -351,7 +347,7 @@ export abstract class Dialog<O extends object = {}> extends Configurable {
      * returns `dialog[${this.bindingPath()}]`. 
      */
     protected onComputeID(): string {
-        return `dialog[${this.bindingPath()}]`;
+        return `dialog`;
     }
 
     /**
@@ -381,22 +377,6 @@ export abstract class Dialog<O extends object = {}> extends Configurable {
      */
     protected async onPostBubbleEvent(dc: DialogContext, event: DialogEvent): Promise<boolean> {
         return false;
-    }
-
-    /**
-     * Aids in computing a unique ID for a dialog by returning the current input or output property
-     * the dialog is bound to.
-     * @param hashOutput (Optional) if true the output will be hashed to less than 15 characters before returning.
-     */
-    protected bindingPath(hashOutput = true): string {
-        let output = '';
-        if (this.inputProperties.hasOwnProperty('value') && this.inputProperties['value']) {
-            output = this.inputProperties['value'];
-        } else if (this.outputProperty && this.outputProperty.length) {
-            output = this.outputProperty;
-        }
-
-        return hashOutput ? this.hashedLabel(output) : output;
     }
 
     /**

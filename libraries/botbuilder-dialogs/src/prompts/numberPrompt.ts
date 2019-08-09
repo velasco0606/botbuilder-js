@@ -34,7 +34,7 @@ export class NumberPrompt extends Prompt<number> {
     }
 
     protected onComputeID(): string {
-        return `numberPrompt[${this.bindingPath()}]`;
+        return `numberPrompt`;
     }
 
     protected async onPrompt(context: TurnContext, state: any, options: PromptOptions, isRetry: boolean): Promise<void> {

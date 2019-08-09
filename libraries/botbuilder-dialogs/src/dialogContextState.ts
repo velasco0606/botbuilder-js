@@ -38,6 +38,14 @@ export interface DialogContextVisibleState {
 export class DialogContextState {
     private readonly dc: DialogContext;
 
+
+    /**
+     * @private
+     */
+    constructor(dc: DialogContext) {
+        this.dc = dc;
+    }
+
     /**
      * Properties being persisted for the current user across all their conversations with the
      * bot.
@@ -45,24 +53,27 @@ export class DialogContextState {
      * @remarks
      * These values are visible to all dialogs.
      */
-    public readonly user: StateMap; 
+    public get user(): StateMap {
+        return this.dc.context.turnState.get(USER_STATE);
+    }
 
-    /**
+    public set user(value: StateMap) {
+        this.dc.context.turnState.set(USER_STATE, value);
+    }
+
+        /**
      * Properties being persisted for the current conversation the user is having with the bot.
      * 
      * @remarks
      * These values are visible to all dialogs but are intended to be transient and may 
      * automatically expire after some timeout period.
      */
-    public readonly conversation: StateMap; 
+    public get conversation(): StateMap {
+        return this.dc.context.turnState.get(CONVERSATION_STATE);
+    }
 
-    /**
-     * @private
-     */
-    constructor(dc: DialogContext, userState: StateMap, conversationState: StateMap) {
-        this.dc = dc;
-        this.user = userState;
-        this.conversation = conversationState;
+    public set conversation(value: StateMap) {
+        this.dc.context.turnState.set(CONVERSATION_STATE, value);
     }
 
     /**
@@ -89,12 +100,12 @@ export class DialogContextState {
      */
     public get turn(): StateMap {
         // Get transient state for the current turn
-        let turn: object = this.dc.context.turnState.get(TURN_STATE);
+        let turn: StateMap = this.dc.context.turnState.get(TURN_STATE);
         if (!turn) {
-            turn = {};
+            turn = new StateMap({});
             this.dc.context.turnState.set(TURN_STATE, turn);
         }
-        return new StateMap(turn);
+        return turn;
     }
 
     /**
@@ -204,4 +215,6 @@ export class DialogContextState {
     }
 }
 
+const USER_STATE = Symbol('user_state');
+const CONVERSATION_STATE = Symbol('conversation_state');
 const TURN_STATE = Symbol('turn_state');

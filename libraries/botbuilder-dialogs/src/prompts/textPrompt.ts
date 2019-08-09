@@ -28,7 +28,7 @@ export class TextPrompt extends Prompt<string> {
     }
 
     protected onComputeID(): string {
-        return `textPrompt[${this.bindingPath()}]`;
+        return `textPrompt`;
     }
 
     protected async onPrompt(context: TurnContext, state: any, options: PromptOptions, isRetry: boolean): Promise<void> {

@@ -84,7 +84,7 @@ export class ConfirmPrompt extends Prompt<boolean> {
     }
 
     protected onComputeID(): string {
-        return `confirmPrompt[${this.bindingPath()}]`;
+        return `confirmPrompt`;
     }
 
     protected async onPrompt(context: TurnContext, state: any, options: PromptOptions, isRetry: boolean): Promise<void> {

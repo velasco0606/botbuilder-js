@@ -128,16 +128,21 @@ export class DialogSet {
     /**
      * Creates a dialog context which can be used to work with the dialogs in the set.
      * @param context Context for the current turn of conversation with the user.
+     * @param conversationState (Optional) global conversation state to initialize dialog context with. 
+     * @param userState (Optional) global user state to initialize dialog context with. 
      */
     public async createContext(context: TurnContext, conversationState?: object, userState?: object): Promise<DialogContext> {
         if (!this.dialogState) {
             throw new Error(`DialogSet.createContextAsync(): the dialog set was not bound to a stateProperty when constructed.`);
         }
         const state: DialogState = await this.dialogState.get(context, { dialogStack: [] } as DialogState);
-        const conversation = conversationState ? new StateMap(conversationState) : undefined;
-        const user = userState ? new StateMap(userState) : undefined;
 
-        return new DialogContext(this, context, state, conversation, user);
+        // Create DC
+        const dc = new DialogContext(this, context, state);
+        if (conversationState) { dc.state.conversation = new StateMap(conversationState) }
+        if (userState) { dc.state.user = new StateMap(userState) }
+
+        return dc;
     }
 
     /**

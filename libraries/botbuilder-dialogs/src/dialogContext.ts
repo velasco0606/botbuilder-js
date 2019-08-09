@@ -10,7 +10,6 @@ import { Choice } from './choices';
 import { Dialog, DialogInstance, DialogReason, DialogTurnResult, DialogTurnStatus, DialogEvent } from './dialog';
 import { DialogSet } from './dialogSet';
 import { PromptOptions } from './prompts';
-import { StateMap } from './stateMap';
 import { DialogContextState } from './dialogContextState';
 import { DialogContainer } from './dialogContainer';
 
@@ -22,20 +21,6 @@ export interface DialogState {
      * The dialog stack being persisted.
      */
     dialogStack: DialogInstance[];
-
-    /**
-     * (optional) values that are persisted for the lifetime of the conversation.
-     * 
-     * @remarks
-     * These values are intended to be transient and may automatically expire after some timeout
-     * period.
-     */
-    conversationState?: object;
-
-    /**
-     * (Optional) values that are persisted across all interactions with the current user.
-     */
-    userState?: object;
 }
 
 /**
@@ -72,25 +57,13 @@ export class DialogContext {
      * @param dialogs Parent dialog set.
      * @param context Context for the current turn of conversation with the user.
      * @param state State object being used to persist the dialog stack.
-     * @param userState (Optional) user values to bind context to. If not specified, a new set of user values will be persisted off the passed in `state` property.
-     * @param conversationState (Optional) conversation values to bind context to. If not specified, a new set of conversation values will be persisted off the passed in `state` property.
      */
-    constructor(dialogs: DialogSet, context: TurnContext, state: DialogState, userState?: StateMap, conversationState?: StateMap) {
+    constructor(dialogs: DialogSet, context: TurnContext, state: DialogState) {
         if (!Array.isArray(state.dialogStack)) { state.dialogStack = []; }
         this.dialogs = dialogs;
         this.context = context;
         this.stack = state.dialogStack;
-        if (!conversationState) {
-            // Create a new session state map
-            if (typeof state.conversationState !== 'object') { state.conversationState = {}; }
-            conversationState = new StateMap(state.conversationState);
-        }
-        if (!userState) {
-            // Create a new session state map
-            if (typeof state.userState !== 'object') { state.userState = {}; }
-            userState = new StateMap(state.userState);
-        }
-        this.state = new DialogContextState(this, userState, conversationState);
+        this.state = new DialogContextState(this);
     }
 
     /**
@@ -161,20 +134,6 @@ export class DialogContext {
         // Lookup dialog
         const dialog: Dialog<{}> = this.findDialog(dialogId);
         if (!dialog) { throw new Error(`DialogContext.beginDialog(): A dialog with an id of '${ dialogId }' wasn't found.`); }
-
-        // Process dialogs input bindings
-        // - If the stack is empty, any `dialog.` bindings will be pulled from the active dialog on
-        //   the parents stack.
-        options = options || {};
-        for(const option in dialog.inputProperties) {
-            if (dialog.inputProperties.hasOwnProperty(option)) {
-                const binding = dialog.inputProperties[option];
-                if (binding) {
-                    const value = this.state.getValue(binding);
-                    options[option] = Array.isArray(value) || typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
-                }
-            }
-        }
 
         // Check for inherited state
         // - Local stack references are positive numbers and negative numbers are references on the
@@ -467,43 +426,22 @@ export class DialogContext {
      * ```
      */
     public async repromptDialog(): Promise<void> {
-        // Emit 'repromptDialog' event first
-        const handled = await this.emitEvent('repromptDialog', undefined, false);
-        if (!handled) {
-            // Check for a dialog on the stack
-            const instance: DialogInstance = this.activeDialog;
-            if (instance) {
-                // Lookup dialog
-                const dialog: Dialog<{}> = this.findDialog(instance.id);
-                if (!dialog) {
-                    throw new Error(`DialogSet.reprompt(): Can't find A dialog with an id of '${instance.id}'.`);
-                }
-
-                // Ask dialog to re-prompt if supported
-                await dialog.repromptDialog(this.context, instance);
-            }
-        }
+        // Emit 'repromptDialog' event
+        // - The base event handler will call legacy method as needed.
+        await this.emitEvent('repromptDialog', undefined, false);
     }
 
     private async endActiveDialog(reason: DialogReason, result?: any): Promise<void> {
-        const instance: DialogInstance = this.activeDialog;
-        if (instance) {
-            // Lookup dialog
-            const dialog: Dialog<{}> = this.findDialog(instance.id);
-            if (dialog) {
-                // Notify dialog of end
-                await dialog.endDialog(this.context, instance, reason);
-            }
+        if (this.stack.length > 0) {
+            // Notify dialog of end
+            // - The base event handler will call legacy method as needed.
+            await this.emitEvent('endDialog', reason, false);
 
             // Pop dialog off stack
             this.stack.pop();
 
-            // Process dialogs output binding
-            // - if the stack is empty, any `dialog.` bindings will be applied to the active dialog
-            //   on the parents stack.
-            if (dialog && dialog.outputProperty && result !== undefined) {
-                this.state.setValue(dialog.outputProperty, result);
-            }
+            // Save output to `turn.lastResult`
+            this.state.setValue('turn.lastResult', result);
         }
     }
 

@@ -104,7 +104,7 @@ export class DialogManager extends Configurable  {
         }
 
         // Clone state to preserve original state
-        const newState = JSON.parse(JSON.stringify(state));
+        const newState: PersistedState = JSON.parse(JSON.stringify(state));
 
         // Check for expired conversation
         const now  = new Date();
@@ -123,9 +123,10 @@ export class DialogManager extends Configurable  {
         }
 
         // Create DialogContext
-        const userState = new StateMap(newState.userState);
-        const conversationState = new StateMap(newState.conversationState);
-        const dc = new DialogContext(this.main, context, newState.conversationState._dialogs, userState, conversationState);
+        const dc = new DialogContext(this.main, context, newState.conversationState._dialogs);
+        dc.state.user = new StateMap(newState.userState);
+        dc.state.conversation = new StateMap(newState.conversationState);
+
 
         // Dispatch "activityReceived" event
         // - This will queue up any interruptions.

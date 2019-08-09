@@ -36,6 +36,11 @@ export interface AdaptiveDialogConfiguration extends DialogConfiguration {
     steps?: Dialog[];
 }
 
+export interface AdaptiveDialogOption {
+    type?: string;
+    byRef: boolean;
+}
+
 export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
     private readonly changeKey = Symbol('changes');
 
@@ -50,6 +55,8 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
         super(dialogId);
         if (Array.isArray(steps)) { Array.prototype.push.apply(this.steps, steps) }
     }
+
+    public readonly options: { [name:string]: AdaptiveDialogOption; } = {};
 
     /**
      * Planning rules to evaluate for each conversational turn.
@@ -77,6 +84,18 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
         this.dialogs.telemetryClient = client;
     }
 
+    public addOption(name: string, byRef?: boolean): this;
+    public addOption(name: string, type: string, byRef?: boolean): this;
+    public addOption(name: string, type?: string|boolean, byRef?: boolean): this {
+        if (this.options.hasOwnProperty(name)) { throw new Error(`${this.id}: An option named '${name}' already added.`) }
+        if (typeof type == 'boolean') { 
+            byRef = type;
+            type = undefined; 
+        }
+        this.options[name] = { type: type as string, byRef: !!byRef };
+        return this;
+    }
+
     public addRule(rule: Rule): this {
         this.rules.push(rule);
         return this;
@@ -97,7 +116,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
     //---------------------------------------------------------------------------------------------
 
     protected onComputeID(): string {
-        return `adaptive[${this.bindingPath()}]`;
+        return `adaptiveDialog`;
     }
    
     public async beginDialog(dc: DialogContext, options?: O): Promise<DialogTurnResult> {
@@ -106,17 +125,8 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
             this.installedDependencies = true;
             this.onInstallDependencies();
         }
-        
-        // Persist options to dialog state
-        const state: AdaptiveDialogState<O> = dc.activeDialog.state;
-        state.options = options || {} as O;
-
-        // Initialize 'result' with any initial value
-        if (state.options.hasOwnProperty('value')) {
-            const value = options['value'];
-            const clone = Array.isArray(value) || typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
-            state.result = clone;
-        }
+        // Initialize dialogs memory from options
+        this.copyOptionsToMemory(dc, options);
 
         // Evaluate rules and queue up step changes
         const event: DialogEvent = { name: AdaptiveEventNames.beginDialog, value: options, bubble: false };
@@ -158,18 +168,18 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
 
     public async repromptDialog(context: TurnContext, instance: DialogInstance): Promise<void> {
         // Forward to current sequence step
-        const state = instance.state as AdaptiveDialogState<O>;
-        if (state.steps && state.steps.length > 0) {
+        const state = instance.state as AdaptiveDialogState;
+        if (state._steps && state._steps.length > 0) {
             // We need to mockup a DialogContext so that we can call repromptDialog() for the active step 
-            const stepDC: DialogContext = new DialogContext(this.dialogs, context, state.steps[0], new StateMap({}), new StateMap({}));
+            const stepDC: DialogContext = new DialogContext(this.dialogs, context, state._steps[0]);
             await stepDC.repromptDialog();
         }
     }
 
     public createChildContext(dc: DialogContext): DialogContext | undefined {
-        const state: AdaptiveDialogState<O> = dc.activeDialog.state;
-        if (Array.isArray(state.steps) && state.steps.length > 0) {
-            const step = new SequenceContext(this.dialogs, dc, state.steps[0], state.steps, this.changeKey);
+        const state: AdaptiveDialogState = dc.activeDialog.state;
+        if (Array.isArray(state._steps) && state._steps.length > 0) {
+            const step = new SequenceContext(this.dialogs, dc, state._steps[0], state._steps, this.changeKey);
             step.parent = dc;
             return step;
         } else {
@@ -185,7 +195,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
     // Event Processing
     //---------------------------------------------------------------------------------------------
 
-    protected async processEvent(sequence: SequenceContext, event: DialogEvent, preBubble: boolean): Promise<boolean> {
+    protected async processEvent(sequence: SequenceContext<O>, event: DialogEvent, preBubble: boolean): Promise<boolean> {
         // Look for triggered rule
         let handled = await this.queueFirstMatch(sequence, event, preBubble);
         if (handled) {
@@ -196,6 +206,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
         if (preBubble) {
             switch (event.name) {
             case AdaptiveEventNames.beginDialog:
+                // Handle event
                 if (this.steps.length > 0) {
                     // Initialize plan with steps
                     const changes: StepChangeList = {
@@ -235,6 +246,13 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
                         sequence.state.setValue('turn.membersAdded', membersAdded);
                         handled = await this.processEvent(sequence, { name: AdaptiveEventNames.conversationMembersAdded, value: membersAdded, bubble: false}, true);
                     }
+                }
+                break;
+            case AdaptiveEventNames.endDialog:
+                const reason = event.value as DialogReason;
+                if (reason != DialogReason.cancelCalled) {
+                    // Copy any memory changes for byRef options back to their source.
+                    this.copyMemoryToRefs(sequence);
                 }
                 break;
             }
@@ -406,7 +424,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
         // End dialog and return result
         if (sequence.activeDialog) {
             if (this.shouldEnd(sequence)) {
-                const state: AdaptiveDialogState<O> = sequence.activeDialog.state;
+                const state: AdaptiveDialogState = sequence.activeDialog.state;
                 return await sequence.endDialog(state.result);
             } else {
                 return Dialog.EndOfTurn;
@@ -429,10 +447,43 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
     }
 
     private toSequenceContext(dc: DialogContext): SequenceContext<O> {
-        const state: AdaptiveDialogState<O> = dc.activeDialog.state;
-        if (!Array.isArray(state.steps)) { state.steps = [] }
-        const sequence = new SequenceContext(dc.dialogs, dc, { dialogStack: dc.stack }, state.steps, this.changeKey);
+        const state: AdaptiveDialogState = dc.activeDialog.state;
+        if (!Array.isArray(state._steps)) { state._steps = [] }
+        const sequence = new SequenceContext(dc.dialogs, dc, { dialogStack: dc.stack }, state._steps, this.changeKey);
         sequence.parent = dc.parent;
         return sequence;
+    }
+
+    private copyOptionsToMemory(dc: DialogContext, options?: O): void {
+        if (options) {
+            const state: AdaptiveDialogState = dc.activeDialog.state;
+            for (const name in options) {
+                let value = options[name];
+                if (options.hasOwnProperty(name) && value !== undefined) {
+                    // Is this a reference property?
+                    if (this.options.hasOwnProperty(name) && this.options[name].byRef && typeof value == 'string' && value.length > 0) {
+                        // Copy value by reference
+                        if (!state._refs) { state._refs = {} }
+                        state._refs[name] = value;
+                        value = dc.state.getValue(value); 
+                    }
+    
+                    // Copy value to state
+                    state[name] = Array.isArray(value) || typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
+                }
+            }
+        }
+    }
+
+    private copyMemoryToRefs(dc: DialogContext): void {
+        const state: AdaptiveDialogState = dc.activeDialog.state;
+        if (state._refs) {
+            for (const name in state._refs) {
+                if (state._refs.hasOwnProperty(name)) {
+                    const path = state._refs[name];
+                    dc.state.setValue(path, state[name]);
+                }
+            }
+        }        
     }
 }

@@ -26,7 +26,7 @@ export class AttachmentPrompt extends Prompt<Attachment[]> {
     }
 
     protected onComputeID(): string {
-        return `attachmentPrompt[${this.bindingPath()}]`;
+        return `attachmentPrompt`;
     }
 
     protected async onPrompt(context: TurnContext, state: any, options: PromptOptions, isRetry: boolean): Promise<void> {

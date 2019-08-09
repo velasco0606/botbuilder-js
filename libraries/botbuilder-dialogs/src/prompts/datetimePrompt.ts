@@ -56,7 +56,7 @@ export class DateTimePrompt extends Prompt<DateTimeResolution[]> {
     }
 
     protected onComputeID(): string {
-        return `datetimePrompt[${this.bindingPath()}]`;
+        return `datetimePrompt`;
     }
     
     protected async onPrompt(context: TurnContext, state: any, options: PromptOptions, isRetry: boolean): Promise<void> {

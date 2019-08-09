@@ -7,10 +7,10 @@
  */
 import { DialogContext, DialogState, DialogSet } from 'botbuilder-dialogs';
 
-export interface AdaptiveDialogState<O extends Object> {
-    options: O;
-    result?: any;
-    steps?: StepState[];
+export interface AdaptiveDialogState {
+    [name: string]: any;
+    _steps?: StepState[];
+    _refs?: { [name: string]: string; };
 }
 
 export interface StepState extends DialogState {
@@ -40,7 +40,8 @@ export enum AdaptiveEventNames {
     conversationMembersAdded = 'conversationMembersAdded',
     sequenceStarted = 'sequenceStarted',
     sequenceEnded = 'sequenceEnded',
-    cancelDialog = 'cancelDialog'
+    cancelDialog = 'cancelDialog',
+    endDialog = 'endDialog'
 }
 
 export class SequenceContext<O extends object = {}> extends DialogContext {
@@ -50,7 +51,7 @@ export class SequenceContext<O extends object = {}> extends DialogContext {
      * Creates a new `SequenceContext` instance.
      */
     constructor(dialogs: DialogSet, dc: DialogContext, state: DialogState, steps: StepState[], changeKey: symbol) {
-        super(dialogs, dc.context, state, dc.state.user, dc.state.conversation);
+        super(dialogs, dc.context, state);
         this.steps = steps;
         this.changeKey = changeKey;
     }

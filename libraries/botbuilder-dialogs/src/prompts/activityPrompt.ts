@@ -29,6 +29,10 @@ export class ActivityPrompt extends Dialog {
         super(dialogId);
     }
 
+    protected onComputeID(): string {
+        return `activityPrompt`;
+    }
+
     public async beginDialog(dc: DialogContext, options: PromptOptions): Promise<DialogTurnResult> {
         // Ensure prompts have input hint set
         const opt: Partial<PromptOptions> = {...options};

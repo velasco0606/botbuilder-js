@@ -116,6 +116,10 @@ export class OAuthPrompt extends Dialog {
         super(dialogId);
     }
 
+    protected onComputeID(): string {
+        return `oauthPrompt`;
+    }
+
     public async beginDialog(dc: DialogContext, options?: PromptOptions): Promise<DialogTurnResult> {
         // Ensure prompts have input hint set
         const o: Partial<PromptOptions> = {...options};
