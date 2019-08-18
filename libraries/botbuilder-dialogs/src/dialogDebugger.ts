@@ -25,7 +25,7 @@ export class DialogDebugger {
         return !!this.dc.state.getValue(`${scope}.$traceEnabled`);
     }
 
-    public async trace(title: string, settings?: object): Promise<void> {
+    public async trace(title: string, memory?: object): Promise<void> {
         if (this.traceEnabled) {
             // Initialize card
             const card = {
@@ -46,12 +46,10 @@ export class DialogDebugger {
                 ]
             };
 
-            // Render state & settings
-            const memory: any = {
-                state: this.dc.state.getScope('dialog')
+            // Render memory
+            if (memory) {
+                this.renderObject(memory, card.body[1] as any, '$');
             }
-            if (settings) { memory.settings = settings }
-            this.renderObject(memory, card.body[1] as any, '$');
 
             // Send card
             const msg = MessageFactory.attachment(CardFactory.adaptiveCard(card));
