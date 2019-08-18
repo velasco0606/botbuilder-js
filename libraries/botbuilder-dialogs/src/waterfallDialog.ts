@@ -204,6 +204,8 @@ export class WaterfallDialog<O extends object = {}> extends Dialog<O> {
             const state: WaterfallDialogState = dc.activeDialog.state as WaterfallDialogState;
             state.stepIndex = index;
 
+            await dc.debugger.trace(`Waterfall[${this.id}] Step: ${index + 1} of ${this.steps.length}`);
+
             // Create step context
             let nextCalled = false;
             const step: WaterfallStepContext<O> = new WaterfallStepContext<O>(dc, {

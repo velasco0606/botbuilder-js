@@ -14,6 +14,11 @@ export class DialogStateManager {
 
     constructor(dc: DialogContext) {
         this.dc = dc;
+
+        // Add turn scope
+        if (!this.getScope('turn')) {
+            this.setScope('turn', {});
+        }
     }
 
     public getScope(name: string): object|undefined {
@@ -27,7 +32,7 @@ export class DialogStateManager {
     }
 
     public setScope(name: string, state: object): this {
-        if (name == 'dialog') { throw new Error(`DialogStateManager: cannot set a scope. The name "dialog" is a reserved scope.`) }
+        if (name == 'dialog') { throw new Error(`DialogStateManager: cannot set scope. The name "dialog" is a reserved scope.`) }
         let scopes: object = this.dc.context.turnState.get(SCOPES);
         if (!scopes) {
             scopes = {};

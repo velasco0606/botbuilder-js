@@ -11,6 +11,7 @@ import { Dialog, DialogInstance, DialogReason, DialogTurnResult, DialogTurnStatu
 import { DialogSet } from './dialogSet';
 import { PromptOptions } from './prompts';
 import { DialogStateManager } from './state';
+import { DialogDebugger } from './dialogDebugger';
 
 /**
  * State information persisted by a `DialogSet`.
@@ -51,6 +52,8 @@ export class DialogContext {
 
     public readonly state: DialogStateManager;
 
+    public readonly debugger: DialogDebugger;
+
     /**
      * The parent DialogContext if any.
      * 
@@ -71,6 +74,7 @@ export class DialogContext {
         this.context = context;
         this.stack = state.dialogStack;
         this.state = new DialogStateManager(this);
+        this.debugger = new DialogDebugger(this);
     }
 
     /**
