@@ -84,7 +84,13 @@ abstract class InterceptionMiddleware implements Middleware {
 
                 var traceActivities: Partial<Activity>[] = [];
                 activities.forEach(activity => {
-                    traceActivities.push(TraceActivity.fromActivity(activity, 'SentActivity', 'Sent Activity'));
+                    if (activity.type == ActivityTypes.Trace) {
+                        // Clone trace activity
+                        const clone = JSON.parse(JSON.stringify(activity));
+                        traceActivities.push(clone);
+                    } else {
+                        traceActivities.push(TraceActivity.fromActivity(activity, 'SentActivity', 'Sent Activity'));
+                    }
                 });
                 await this.invokeOutbound(ctx, traceActivities);
                 return await nextSend();
@@ -203,6 +209,12 @@ export class InspectionMiddleware extends InterceptionMiddleware {
                     await this.processAttachCommand(turnContext, command[2]);
                     return true;
                 }
+
+                if (command[1] === 'trace') {
+                    const traceFilters: string[] = command.length > 2 ? command.slice(2) : []; 
+                    await this.processTraceCommand(turnContext, traceFilters);
+                    return true;
+                }
             }
 
             turnContext.activity.text = originalText;
@@ -219,7 +231,7 @@ export class InspectionMiddleware extends InterceptionMiddleware {
 
         var session = await this.findSession(turnContext);
         if (session !== undefined) {
-            
+            session.initializeTurnState(turnContext);
             if (await this.invokeSend(turnContext, session, traceActivity)) {
                 return { shouldForwardToApplication: true, shouldIntercept: true };
             } else {
@@ -271,16 +283,16 @@ export class InspectionMiddleware extends InterceptionMiddleware {
     }
 
     private async processOpenCommand(turnContext: TurnContext): Promise<any> {
-        var sessions = await this.inspectionStateAccessor.get(turnContext, InspectionSessionsByStatus.DefaultValue);
+        var sessions = await this.inspectionStateAccessor.get(turnContext, DefaultInspectionSessionsByStatus);
         var sessionId = this.openCommand(sessions, TurnContext.getConversationReference(turnContext.activity));
         await turnContext.sendActivity(TraceActivity.makeCommandActivity(`${InspectionMiddleware.command} attach ${sessionId}`));
         await this.inspectionState.saveChanges(turnContext, false);
     }
 
     private async processAttachCommand(turnContext: TurnContext, sessionId: string): Promise<any> {
-        var sessions = await this.inspectionStateAccessor.get(turnContext, InspectionSessionsByStatus.DefaultValue);
+        var sessions = await this.inspectionStateAccessor.get(turnContext, DefaultInspectionSessionsByStatus);
 
-        if (this.attachComamnd(turnContext.activity.conversation.id, sessions, sessionId)) {
+        if (this.attachCommand(turnContext.activity.conversation.id, sessions, sessionId)) {
             await turnContext.sendActivity('Attached to session, all traffic is being replicated for inspection.');
         }
         else {
@@ -288,6 +300,23 @@ export class InspectionMiddleware extends InterceptionMiddleware {
         }
 
         await this.inspectionState.saveChanges(turnContext, false);
+    }
+
+    private async processTraceCommand(turnContext: TurnContext, traceFilters: string[]): Promise<any> {
+        // Get attached session
+        const session = await this.findSession(turnContext);
+        if (session != undefined) {
+            session.updateTraceFilters(traceFilters);
+            await this.inspectionState.saveChanges(turnContext, false);
+
+            if (traceFilters.length >= 1) {
+                await turnContext.sendActivity(`Dialog tracing enabled. Send "${InspectionMiddleware.command} trace" to disable tracing.`);
+            } else {
+                await turnContext.sendActivity(`Dialog tracing disabled. Send "${InspectionMiddleware.command} trace *" to trace all categories.`);
+            }
+        } else {
+            await turnContext.sendActivity(`Not attached to any session.`);
+        }
     }
 
     private openCommand(sessions: InspectionSessionsByStatus, conversationReference: Partial<ConversationReference>): string {
@@ -306,7 +335,7 @@ export class InspectionMiddleware extends InterceptionMiddleware {
         return sessionId;
     }
 
-    private attachComamnd(conversationId: string, sessions: InspectionSessionsByStatus, sessionId: string): boolean {
+    private attachCommand(conversationId: string, sessions: InspectionSessionsByStatus, sessionId: string): boolean {
 
         var inspectionSessionState = sessions.openedSessions[sessionId];
         if (inspectionSessionState !== undefined) {
@@ -318,8 +347,8 @@ export class InspectionMiddleware extends InterceptionMiddleware {
         return false;
     }
 
-    private async findSession(turnContext: TurnContext): Promise<any> {
-        var sessions = await this.inspectionStateAccessor.get(turnContext, InspectionSessionsByStatus.DefaultValue);
+    private async findSession(turnContext: TurnContext): Promise<InspectionSession|undefined> {
+        var sessions = await this.inspectionStateAccessor.get(turnContext, DefaultInspectionSessionsByStatus);
 
         var conversationReference = sessions.attachedSessions[turnContext.activity.conversation.id];
         if (conversationReference !== undefined) {
@@ -340,7 +369,7 @@ export class InspectionMiddleware extends InterceptionMiddleware {
     }
 
     private async cleanUpSession(turnContext: TurnContext): Promise<any> {
-        var sessions = await this.inspectionStateAccessor.get(turnContext, InspectionSessionsByStatus.DefaultValue);
+        var sessions = await this.inspectionStateAccessor.get(turnContext, DefaultInspectionSessionsByStatus);
 
         delete sessions.attachedSessions[turnContext.activity.conversation.id];
         await this.inspectionState.saveChanges(turnContext, false);
@@ -350,17 +379,33 @@ export class InspectionMiddleware extends InterceptionMiddleware {
 /** @private */
 class InspectionSession {
 
-    private readonly conversationReference: Partial<ConversationReference>;
+    private readonly channelReference: Partial<InspectionChannelReference>;
     private readonly connectorClient: ConnectorClient;
 
-    constructor(conversationReference: Partial<ConversationReference>, credentials: MicrosoftAppCredentials) {
-        this.conversationReference = conversationReference;
-        this.connectorClient = new ConnectorClient(credentials, { baseUri: conversationReference.serviceUrl });
+    constructor(channelReference: Partial<InspectionChannelReference>, credentials: MicrosoftAppCredentials) {
+        this.channelReference = channelReference;
+        this.connectorClient = new ConnectorClient(credentials, { baseUri: channelReference.serviceUrl });
+    }
+
+    public get isTracing(): boolean {
+        return Array.isArray(this.channelReference.traceFilters) && this.channelReference.traceFilters.length > 0;
+    }
+
+    public updateTraceFilters(filters: string[]): void {
+        this.channelReference.traceFilters = filters;
+    }
+
+
+    public initializeTurnState(turnContext: TurnContext): void {
+        turnContext.turnState.set('https://www.botframework.com/state/debugging', true);
+        if (this.isTracing) {
+            turnContext.turnState.set('https://www.botframework.com/state/traceFilters', this.channelReference.traceFilters);
+        }
     }
 
     public async send(activity: Partial<Activity>): Promise<any> {
 
-        TurnContext.applyConversationReference(activity, this.conversationReference);
+        TurnContext.applyConversationReference(activity, this.channelReference);
 
         try {
             await this.connectorClient.conversations.sendToConversation(activity.conversation.id, activity as Activity);
@@ -373,13 +418,16 @@ class InspectionSession {
 }
 
 /** @private */
-class InspectionSessionsByStatus {
+interface InspectionSessionsByStatus {
+    openedSessions: { [id: string]: Partial<InspectionChannelReference>; };
+    attachedSessions: { [id: string]: Partial<InspectionChannelReference>; };
+}
 
-    public static DefaultValue: InspectionSessionsByStatus = new InspectionSessionsByStatus();
+const DefaultInspectionSessionsByStatus: InspectionSessionsByStatus = { openedSessions: {}, attachedSessions: {} }; 
 
-    public openedSessions: { [id: string]: Partial<ConversationReference>; } = {};
-
-    public attachedSessions: { [id: string]: Partial<ConversationReference>; } = {};
+/** @private */
+interface InspectionChannelReference extends ConversationReference {
+    traceFilters?: string[];
 }
 
 /**
@@ -400,4 +448,5 @@ export class InspectionState extends BotState {
     protected getStorageKey(turnContext: TurnContext) {
         return 'InspectionState';
     }
-} 
+}
+
