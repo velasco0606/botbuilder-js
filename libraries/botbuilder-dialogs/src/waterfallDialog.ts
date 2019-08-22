@@ -210,7 +210,7 @@ export class WaterfallDialog<O extends object = {}> extends Dialog<O> {
             } else {
                 memory.values = state.values;
             }
-            await dc.debugger.trace(`Waterfall[${this.id}] Step: ${index + 1} of ${this.steps.length}`, memory);
+            await dc.debugger.sendTrace(`Waterfall[${this.id}] Step: ${index + 1} of ${this.steps.length}`, memory);
 
             // Create step context
             let nextCalled = false;

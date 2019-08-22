@@ -23,14 +23,25 @@ class TraceActivity {
     }
 
     public static fromActivity(activity: Activity|Partial<Activity>, name: string, label: string): Partial<Activity> {
-        return {
-            type: ActivityTypes.Trace,
-            timestamp: new Date(),
-            name: name,
-            label: label,
-            value: activity,
-            valueType: 'https://www.botframework.com/schemas/activity'
-        };
+        if (activity.type == ActivityTypes.Trace) {
+            return {
+                type: ActivityTypes.Trace,
+                timestamp: new Date(),
+                name: activity.name,
+                label: activity.label,
+                value: activity.value,
+                valueType: activity.valueType
+            };
+        } else {
+            return {
+                type: ActivityTypes.Trace,
+                timestamp: new Date(),
+                name: name,
+                label: label,
+                value: activity,
+                valueType: 'https://www.botframework.com/schemas/activity'
+            };
+        }
     }
 
     public static fromState(botState: BotState): Partial<Activity> {
@@ -84,13 +95,7 @@ abstract class InterceptionMiddleware implements Middleware {
 
                 var traceActivities: Partial<Activity>[] = [];
                 activities.forEach(activity => {
-                    if (activity.type == ActivityTypes.Trace) {
-                        // Clone trace activity
-                        const clone = JSON.parse(JSON.stringify(activity));
-                        traceActivities.push(clone);
-                    } else {
-                        traceActivities.push(TraceActivity.fromActivity(activity, 'SentActivity', 'Sent Activity'));
-                    }
+                    traceActivities.push(TraceActivity.fromActivity(activity, 'SentActivity', 'Sent Activity'));
                 });
                 await this.invokeOutbound(ctx, traceActivities);
                 return await nextSend();
@@ -210,9 +215,8 @@ export class InspectionMiddleware extends InterceptionMiddleware {
                     return true;
                 }
 
-                if (command[1] === 'trace') {
-                    const traceFilters: string[] = command.length > 2 ? command.slice(2) : []; 
-                    await this.processTraceCommand(turnContext, traceFilters);
+                if (command.length === 3 && command[1] === 'trace') {
+                    await this.processTraceCommand(turnContext, command[2]);
                     return true;
                 }
             }
@@ -302,17 +306,18 @@ export class InspectionMiddleware extends InterceptionMiddleware {
         await this.inspectionState.saveChanges(turnContext, false);
     }
 
-    private async processTraceCommand(turnContext: TurnContext, traceFilters: string[]): Promise<any> {
+    private async processTraceCommand(turnContext: TurnContext, traceLevel: string): Promise<any> {
         // Get attached session
         const session = await this.findSession(turnContext);
         if (session != undefined) {
-            session.updateTraceFilters(traceFilters);
+            traceLevel = traceLevel.toLowerCase();
+            session.updateTraceLevel(traceLevel);
             await this.inspectionState.saveChanges(turnContext, false);
 
-            if (traceFilters.length >= 1) {
-                await turnContext.sendActivity(`Dialog tracing enabled. Send "${InspectionMiddleware.command} trace" to disable tracing.`);
+            if (traceLevel !== 'off') {
+                await turnContext.sendActivity(`Dialog tracing enabled. Send "${InspectionMiddleware.command} trace off" to disable tracing.`);
             } else {
-                await turnContext.sendActivity(`Dialog tracing disabled. Send "${InspectionMiddleware.command} trace *" to trace all categories.`);
+                await turnContext.sendActivity(`Dialog tracing disabled. Send "${InspectionMiddleware.command} trace [error|warning|info|verbose]" to enable tracing.`);
             }
         } else {
             await turnContext.sendActivity(`Not attached to any session.`);
@@ -337,9 +342,10 @@ export class InspectionMiddleware extends InterceptionMiddleware {
 
     private attachCommand(conversationId: string, sessions: InspectionSessionsByStatus, sessionId: string): boolean {
 
-        var inspectionSessionState = sessions.openedSessions[sessionId];
-        if (inspectionSessionState !== undefined) {
-            sessions.attachedSessions[conversationId] = inspectionSessionState;
+        var channelReference = sessions.openedSessions[sessionId];
+        if (channelReference !== undefined) {
+            channelReference.traceLevel = 'info';
+            sessions.attachedSessions[conversationId] = channelReference;
             delete sessions.openedSessions[sessionId];
             return true;
         }
@@ -387,24 +393,16 @@ class InspectionSession {
         this.connectorClient = new ConnectorClient(credentials, { baseUri: channelReference.serviceUrl });
     }
 
-    public get isTracing(): boolean {
-        return Array.isArray(this.channelReference.traceFilters) && this.channelReference.traceFilters.length > 0;
+    public updateTraceLevel(level: string): void {
+        this.channelReference.traceLevel = level;
     }
-
-    public updateTraceFilters(filters: string[]): void {
-        this.channelReference.traceFilters = filters;
-    }
-
 
     public initializeTurnState(turnContext: TurnContext): void {
         turnContext.turnState.set('https://www.botframework.com/state/debugging', true);
-        if (this.isTracing) {
-            turnContext.turnState.set('https://www.botframework.com/state/traceFilters', this.channelReference.traceFilters);
-        }
+        turnContext.turnState.set('https://www.botframework.com/state/traceLevel', this.channelReference.traceLevel);
     }
 
     public async send(activity: Partial<Activity>): Promise<any> {
-
         TurnContext.applyConversationReference(activity, this.channelReference);
 
         try {
@@ -427,7 +425,7 @@ const DefaultInspectionSessionsByStatus: InspectionSessionsByStatus = { openedSe
 
 /** @private */
 interface InspectionChannelReference extends ConversationReference {
-    traceFilters?: string[];
+    traceLevel?: string;
 }
 
 /**

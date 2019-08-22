@@ -83,7 +83,7 @@ export class ComponentDialog<O extends object = {}> extends Dialog<O> {
         // Start the inner dialog.
         const dialogState: DialogState = { dialogStack: [] };
         outerDC.activeDialog.state[PERSISTED_DIALOG_STATE] = dialogState;
-        await outerDC.debugger.trace(`Component[${this.id}] Started`);
+        await outerDC.debugger.sendTrace(`Component[${this.id}] Started`);
         const innerDC: DialogContext = new DialogContext(this.dialogs, outerDC.context, dialogState);
         innerDC.parent = outerDC;
         const turnResult: DialogTurnResult<any> = await this.onBeginDialog(innerDC, options);

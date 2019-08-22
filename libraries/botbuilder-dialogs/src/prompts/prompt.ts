@@ -189,7 +189,7 @@ export abstract class Prompt<T> extends Dialog {
         state.options = opt;
         state.state = {};
 
-        await dc.debugger.trace(`Prompt[${this.id}] Started`, {
+        await dc.debugger.sendTrace(`Prompt[${this.id}] Started`, {
             options: opt
         });
 
@@ -231,13 +231,13 @@ export abstract class Prompt<T> extends Dialog {
 
         // Return recognized value or re-prompt
         if (isValid) {
-            await dc.debugger.trace(`Prompt[${this.id}] Completed`, {
+            await dc.debugger.sendTrace(`Prompt[${this.id}] Completed`, {
                 result: recognized.value
             });
             return await dc.endDialog(recognized.value);
         } else {
             if (!dc.context.responded) {
-                    await dc.debugger.trace(`Prompt[${this.id}] Invalid`);
+                    await dc.debugger.sendTrace(`Prompt[${this.id}] Invalid`);
                     await this.onPrompt(dc.context, state.state, state.options, true);
             }
 
