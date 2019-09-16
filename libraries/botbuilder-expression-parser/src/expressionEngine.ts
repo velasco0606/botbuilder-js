@@ -142,7 +142,9 @@ export class ExpressionEngine implements IExpressionParser {
         parser.addErrorListener(ErrorListener.Instance);
         parser.buildParseTree = true;
 
-        return parser.expression();
+        // tslint:disable-next-line: newline-per-chained-call
+        return parser.file().expression();
+
     }
 
     public parse(expression: string): Expression {

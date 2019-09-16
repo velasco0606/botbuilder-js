@@ -3,6 +3,7 @@ const { Extensions } = require('botbuilder-expression');
 const assert = require('assert');
 
 const invalidExpressions = [
+  "hello world",
   "a+",
   "a+b*",
   "fun(a, b, c",
