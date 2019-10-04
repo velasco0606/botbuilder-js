@@ -6,6 +6,7 @@ import {
     Attachment,
     CardFactory,
     TeamsActivityHandler,
+    TeamsInfo,
     TurnContext
 } from 'botbuilder';
 
@@ -103,6 +104,7 @@ export class RosterBot extends TeamsActivityHandler {
     }
 
     private async getMembers(context: TurnContext): Promise<any[]> {
+        this.get
         return null;
     }
 
