@@ -16,10 +16,9 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
 
     private static readonly trustedHostNames: Map<string, Date> = new Map<string, Date>([
         ['state.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
-        ['api.scratch.botframework.com', new Date(8640000000000000)],                // Date.MAX_VALUE,
+        ['api.botframework.com', new Date(8640000000000000)],                // Date.MAX_VALUE,
         ['api.botframework.com', new Date(8640000000000000)],                // Date.MAX_VALUE,
         ['token.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
-        ['token.scratch.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
         ['state.botframework.azure.us', new Date(8640000000000000)],         // Date.MAX_VALUE,
         ['api.botframework.azure.us', new Date(8640000000000000)],           // Date.MAX_VALUE,
         ['token.botframework.azure.us', new Date(8640000000000000)],         // Date.MAX_VALUE,

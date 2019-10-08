@@ -33,7 +33,7 @@ export class ConnectorClientContext extends msRest.ServiceClient {
 
     super(credentials, options);
 
-    this.baseUri = options.baseUri || this.baseUri || "https://api.scratch.botframework.com";
+    this.baseUri = options.baseUri || this.baseUri || "https://api.botframework.com";
     this.requestContentType = "application/json; charset=utf-8";
     this.credentials = credentials;
 

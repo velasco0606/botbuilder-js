@@ -50,7 +50,7 @@ export namespace AuthenticationConstants {
     /**
      *  OAuth Url used to get a token from OAuthApiClient.
      */
-    export const OAuthUrl = "https://api.scratch.botframework.com";
+    export const OAuthUrl = "https://api.botframework.com";
 
     /**
      * Application Setting Key for the OpenIdMetadataUrl value.
@@ -75,7 +75,7 @@ export namespace AuthenticationConstants {
     /**
      * TO BOT FROM CHANNEL: OpenID metadata document for tokens coming from MSA
      */
-    export const ToBotFromChannelOpenIdMetadataUrl = 'https://login.scratch.botframework.com/v1/.well-known/openidconfiguration';
+    export const ToBotFromChannelOpenIdMetadataUrl = 'https://login.botframework.com/v1/.well-known/openidconfiguration';
 
     /**
      * TO BOT FROM ENTERPRISE CHANNEL: OpenID metadata document for tokens coming from MSA
