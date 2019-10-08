@@ -17,7 +17,6 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
     private static readonly trustedHostNames: Map<string, Date> = new Map<string, Date>([
         ['state.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
         ['api.botframework.com', new Date(8640000000000000)],                // Date.MAX_VALUE,
-        ['api.botframework.com', new Date(8640000000000000)],                // Date.MAX_VALUE,
         ['token.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
         ['state.botframework.azure.us', new Date(8640000000000000)],         // Date.MAX_VALUE,
         ['api.botframework.azure.us', new Date(8640000000000000)],           // Date.MAX_VALUE,
@@ -93,16 +92,15 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
     public async signRequest(webResource: msrest.WebResource): Promise<msrest.WebResource> {
 
         if (this.shouldSetToken(webResource)) {
-            const token: any = await this.getToken();
+            const token: string = await this.getToken();
 
-             return new msrest.TokenCredentials(token).signRequest(webResource);
+            return new msrest.TokenCredentials(token).signRequest(webResource);
         }
 
         return webResource;
     }
 
-    public async getToken(forceRefresh: boolean = false): Promise<string> {
-        
+    public async getToken(forceRefresh: boolean = false): Promise<string> {        
         if (!forceRefresh) {
             // check the global cache for the token. If we have it, and it's valid, we're done.
             const oAuthToken: OAuthResponse = MicrosoftAppCredentials.cache.get(this.tokenCacheKey);
@@ -120,6 +118,7 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
         // 3. We don't have it in the cache.
         const res: Response = await this.refreshToken();
         this.refreshingToken = null;
+
         let oauthResponse: OAuthResponse;
         if (res.ok) {          
             // `res` is equalivent to the results from the cached promise `this.refreshingToken`.
@@ -151,7 +150,6 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
     }
 
     private async refreshToken(): Promise<Response> {
-
         if (!this.refreshingToken) {
             const params = new FormData();
             params.append('grant_type', 'client_credentials');
