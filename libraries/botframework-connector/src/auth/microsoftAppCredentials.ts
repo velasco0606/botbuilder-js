@@ -16,8 +16,10 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
 
     private static readonly trustedHostNames: Map<string, Date> = new Map<string, Date>([
         ['state.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
+        ['api.scratch.botframework.com', new Date(8640000000000000)],                // Date.MAX_VALUE,
         ['api.botframework.com', new Date(8640000000000000)],                // Date.MAX_VALUE,
         ['token.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
+        ['token.scratch.botframework.com', new Date(8640000000000000)],              // Date.MAX_VALUE,
         ['state.botframework.azure.us', new Date(8640000000000000)],         // Date.MAX_VALUE,
         ['api.botframework.azure.us', new Date(8640000000000000)],           // Date.MAX_VALUE,
         ['token.botframework.azure.us', new Date(8640000000000000)],         // Date.MAX_VALUE,
@@ -39,7 +41,7 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
         const tenant = channelAuthTenant && channelAuthTenant.length > 0
             ? channelAuthTenant
             : AuthenticationConstants.DefaultChannelAuthTenant;
-        this.oAuthEndpoint = AuthenticationConstants.ToChannelFromBotLoginUrlPrefix + tenant + AuthenticationConstants.ToChannelFromBotTokenEndpointPath;
+        this.oAuthEndpoint = AuthenticationConstants.ToChannelFromBotLoginUrlTemplate.replace("{0}", tenant);
         this.tokenCacheKey = `${ appId }-cache`;
     }
 
@@ -90,16 +92,18 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
     }
 
     public async signRequest(webResource: msrest.WebResource): Promise<msrest.WebResource> {
-        if (this.shouldSetToken(webResource)) {
-            const token: string = await this.getToken();
 
-            return new msrest.TokenCredentials(token).signRequest(webResource);
+        if (this.shouldSetToken(webResource)) {
+            const token: any = await this.getToken();
+
+             return new msrest.TokenCredentials(token).signRequest(webResource);
         }
 
         return webResource;
     }
 
     public async getToken(forceRefresh: boolean = false): Promise<string> {
+        
         if (!forceRefresh) {
             // check the global cache for the token. If we have it, and it's valid, we're done.
             const oAuthToken: OAuthResponse = MicrosoftAppCredentials.cache.get(this.tokenCacheKey);
@@ -117,7 +121,6 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
         // 3. We don't have it in the cache.
         const res: Response = await this.refreshToken();
         this.refreshingToken = null;
-
         let oauthResponse: OAuthResponse;
         if (res.ok) {          
             // `res` is equalivent to the results from the cached promise `this.refreshingToken`.
@@ -130,6 +133,7 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
                 oauthResponse = await res.json();
                 // Subtract 5 minutes from expires_in so they'll we'll get a
                 // new token before it expires.
+
                 oauthResponse.expiration_time = Date.now() + (oauthResponse.expires_in * 1000) - 300000;
                 MicrosoftAppCredentials.cache.set(this.tokenCacheKey, oauthResponse);
                 return oauthResponse.access_token;
@@ -148,18 +152,21 @@ export class MicrosoftAppCredentials implements msrest.ServiceClientCredentials 
     }
 
     private async refreshToken(): Promise<Response> {
+
         if (!this.refreshingToken) {
             const params = new FormData();
             params.append('grant_type', 'client_credentials');
             params.append('client_id', this.appId);
             params.append('client_secret', this.appPassword);
-            params.append('scope', this.oAuthScope);
+            params.append('resource', this.oAuthScope);
+            params.append('client_info', '1');
 
-            this.refreshingToken = fetch(this.oAuthEndpoint, {
+            this.refreshingToken = fetch(AuthenticationConstants.ToChannelFromBotLoginUrl, {
                 method: 'POST',
                 body: params
             });
         }
+        
         return this.refreshingToken;
     }
 

@@ -132,7 +132,7 @@ const NODE_VERSION: any = process.version;
 const pjson: any = require('../package.json');
 const USER_AGENT: string = `Microsoft-BotFramework/3.1 BotBuilder/${ pjson.version } ` +
     `(Node.js,Version=${ NODE_VERSION }; ${ TYPE } ${ RELEASE }; ${ ARCHITECTURE })`;
-const OAUTH_ENDPOINT = 'https://api.botframework.com';
+const OAUTH_ENDPOINT = 'https://api.scratch.botframework.com';
 const US_GOV_OAUTH_ENDPOINT = 'https://api.botframework.azure.us';
 const INVOKE_RESPONSE_KEY: symbol = Symbol('invokeResponse');
 
@@ -514,6 +514,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
      * @returns A [TokenResponse](xref:botframework-schema.TokenResponse) object that contains the user token.
      */
     public async getUserToken(context: TurnContext, connectionName: string, magicCode?: string): Promise<TokenResponse> {
+        
         if (!context.activity.from || !context.activity.from.id) {
             throw new Error(`BotFrameworkAdapter.getUserToken(): missing from or from.id`);
         }
@@ -524,8 +525,18 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
         const userId: string = context.activity.from.id;
         const url: string = this.oauthApiUrl(context);
         const client: TokenApiClient = this.createTokenApiClient(url);
+        
+        let result: TokenApiModels.UserTokenGetTokenResponse = null;
+        try{
+            result = await client.userToken.getToken(userId, connectionName, { code: magicCode, channelId: context.activity.channelId });
+        } catch(ex){
+            const res = ex;
 
-        const result: TokenApiModels.UserTokenGetTokenResponse = await client.userToken.getToken(userId, connectionName, { code: magicCode, channelId: context.activity.channelId });
+            if(res.statusCode) {
+                return undefined;
+            }
+        }
+        
         if (!result || !result.token || result._response.status == 404) {
             return undefined;
         } else {
@@ -592,6 +603,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
         if (!userId && (!context.activity.from || !context.activity.from.id)) {
             throw new Error(`BotFrameworkAdapter.getTokenStatus(): missing from or from.id`);
         }
+
         this.checkEmulatingOAuthCards(context);
         userId = userId || context.activity.from.id;
         const url: string = this.oauthApiUrl(context);
@@ -765,6 +777,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
         const responses: ResourceResponse[] = [];
         for (let i = 0; i < activities.length; i++) {
             const activity: Partial<Activity> = activities[i];
+            
             switch (activity.type) {
                 case 'delay':
                     await delay(typeof activity.value === 'number' ? activity.value : 1000);
@@ -780,6 +793,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
                     if (!activity.conversation || !activity.conversation.id) {
                         throw new Error(`BotFrameworkAdapter.sendActivity(): missing conversation id.`);
                     }
+                    
                     const client: ConnectorClient = this.createConnectorClient(activity.serviceUrl);
                     if (activity.type === 'trace' && activity.channelId !== 'emulator') {
                     // Just eat activity
@@ -853,7 +867,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
      * Override this in a derived class to create a mock connector client for unit testing.
      */
     protected createConnectorClient(serviceUrl: string): ConnectorClient {
-        const client: ConnectorClient = new ConnectorClient(this.credentials, { baseUri: serviceUrl, userAgent: USER_AGENT} );
+        const client: ConnectorClient = new ConnectorClient(this.credentials, { baseUri: this.credentials.oAuthEndpoint, userAgent: USER_AGENT} );
         return client;
     }
 

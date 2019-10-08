@@ -11,7 +11,15 @@ export namespace AuthenticationConstants {
      * 
      * DEPRECATED: DO NOT USE
      */
-    export const ToChannelFromBotLoginUrl = 'https://login.microsoftonline.com/botframework.com/oauth2/v2.0/token';
+    export const ToChannelFromBotLoginUrl = 'https://login.microsoftonline.com/botframework.com/oauth2/token';
+
+    /**
+     * 
+      *  TO CHANNEL FROM BOT: Login URL template string. Bot developer may specify
+       * which tenant to obtain an access token from. By default, the channels only
+      *  accept tokens from "botframework.com". For more details see https://aka.ms/bots/tenant-restriction.
+     */    
+    export const ToChannelFromBotLoginUrlTemplate = "https://login.microsoftonline.com/{0}";
 
     /**
      * TO CHANNEL FROM BOT: Login URL prefix
@@ -21,7 +29,7 @@ export namespace AuthenticationConstants {
     /**
      * TO CHANNEL FROM BOT: Login URL token endpoint path
      */
-    export const ToChannelFromBotTokenEndpointPath = '/oauth2/v2.0/token';
+    export const ToChannelFromBotTokenEndpointPath = '/oauth2/token';
 
     /**
      * TO CHANNEL FROM BOT: Default tenant from which to obtain a token for bot to channel communication
@@ -31,12 +39,18 @@ export namespace AuthenticationConstants {
     /**
      * TO CHANNEL FROM BOT: OAuth scope to request
      */
-    export const ToChannelFromBotOAuthScope = 'https://api.botframework.com/.default';
+    export const ToChannelFromBotOAuthScope = 'https://api.botframework.com';
 
     /**
      * TO BOT FROM CHANNEL: Token issuer
      */
     export const ToBotFromChannelTokenIssuer = 'https://api.botframework.com';
+
+
+    /**
+     *  OAuth Url used to get a token from OAuthApiClient.
+     */
+    export const OAuthUrl = "https://api.scratch.botframework.com";
 
     /**
      * Application Setting Key for the OpenIdMetadataUrl value.
@@ -61,7 +75,7 @@ export namespace AuthenticationConstants {
     /**
      * TO BOT FROM CHANNEL: OpenID metadata document for tokens coming from MSA
      */
-    export const ToBotFromChannelOpenIdMetadataUrl = 'https://login.botframework.com/v1/.well-known/openidconfiguration';
+    export const ToBotFromChannelOpenIdMetadataUrl = 'https://login.scratch.botframework.com/v1/.well-known/openidconfiguration';
 
     /**
      * TO BOT FROM ENTERPRISE CHANNEL: OpenID metadata document for tokens coming from MSA

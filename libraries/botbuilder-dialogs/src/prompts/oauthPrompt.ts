@@ -6,7 +6,7 @@
  * Licensed under the MIT License.
  */
 import { Token } from '@microsoft/recognizers-text-date-time';
-import { Activity, ActivityTypes, Attachment, CardFactory, InputHints, MessageFactory, TokenResponse, TurnContext, IUserTokenProvider } from 'botbuilder-core';
+import { Activity, ActivityTypes, Attachment, CardFactory, InputHints, MessageFactory, TokenResponse, TurnContext, IUserTokenProvider, CardAction } from 'botbuilder-core';
 import { Dialog, DialogTurnResult } from '../dialog';
 import { DialogContext } from '../dialogContext';
 import { PromptOptions, PromptRecognizerResult,  PromptValidator } from './prompt';
@@ -250,11 +250,31 @@ export class OAuthPrompt extends Dialog {
             const cards: Attachment[] = msg.attachments.filter((a: Attachment) => a.contentType === CardFactory.contentTypes.oauthCard);
             if (cards.length === 0) {
                 // Append oauth card
-                msg.attachments.push(CardFactory.oauthCard(
+                const oAuthCard = CardFactory.oauthCard(
                     this.settings.connectionName,
                     this.settings.title,
                     this.settings.text
-                ));
+                );
+
+                if (oAuthCard && oAuthCard.content && oAuthCard.content.buttons) {
+                    const cards: CardAction[] = oAuthCard.content.buttons;
+                    
+                    for(let i = 0; i < cards.length; i++) {
+                        const btn = cards[i];
+                        let link: any = null;
+                        
+                        try{
+                            link = await (context.adapter as any).getSignInLink(context, this.settings.connectionName);
+                        }catch(ex) {
+                            
+                        }
+                        
+                        btn.value = link;
+                        cards[i] = btn;
+                    }
+                }
+
+                msg.attachments.push(oAuthCard);
             }
         } else {
             const cards: Attachment[] = msg.attachments.filter((a: Attachment) => a.contentType === CardFactory.contentTypes.signinCard);

@@ -188,6 +188,7 @@ export class BotFrameworkStreamingAdapter extends BotFrameworkAdapter implements
     /// thus allowing compatibility with streaming extensions.
     /// </summary>
     public createConnectorClient(serviceUrl: string): ConnectorClient {
+        
         return new ConnectorClient(
             this.credentials,
             {
