@@ -32,7 +32,6 @@ export class TokenApiClientContext extends msRest.ServiceClient {
     super(credentials, options);
 
     this.baseUri = options.baseUri || this.baseUri || "https://token.botframework.com";
-    console.log("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@: " + this.baseUri);
     this.requestContentType = "application/json; charset=utf-8";
     this.credentials = credentials;
 
