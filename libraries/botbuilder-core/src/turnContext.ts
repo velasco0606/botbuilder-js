@@ -493,6 +493,22 @@ export class TurnContext {
     }
 
     /**
+     * Determine if the Activity was sent via an Http/Https connection or Streaming
+     * This can be determined by looking at the ServiceUrl property:
+     * (1) All channels that send messages via http/https are not streaming
+     * (2) Channels that send messages via streaming have a ServiceUrl that does not begin with http/https.
+     * Returns True if the Activity originated from a streaming connection.
+     */  
+    public isFromStreamingConnection(): boolean {
+        if(this.activity && this.activity.serviceUrl){            
+            return !this.activity.serviceUrl.toLowerCase().startsWith("http");
+        }
+
+        return false;
+    }  
+        
+
+    /**
      * Map of services and other values cached for the lifetime of the turn.
      *
      * @remarks

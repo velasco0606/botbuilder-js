@@ -12,4 +12,5 @@ export * from './inspectionMiddleware';
 export * from './teamsActivityHandler';
 export * from './teamsActivityHelpers';
 export * from './teamsTurnContextHelpers';
+export * from './turnStateConstants';
 export * from 'botbuilder-core';

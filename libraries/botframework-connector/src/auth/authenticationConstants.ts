@@ -11,13 +11,12 @@ export namespace AuthenticationConstants {
      * 
      * DEPRECATED: DO NOT USE
      */
-    export const ToChannelFromBotLoginUrl = 'https://login.microsoftonline.com/botframework.com/oauth2/token';
+    export const ToChannelFromBotLoginUrl = 'https://login.microsoftonline.com/botframework.com';
 
     /**
-     * 
-      *  TO CHANNEL FROM BOT: Login URL template string. Bot developer may specify
-       * which tenant to obtain an access token from. By default, the channels only
-      *  accept tokens from "botframework.com". For more details see https://aka.ms/bots/tenant-restriction.
+     * TO CHANNEL FROM BOT: Login URL template string. Bot developer may specify
+     * which tenant to obtain an access token from. By default, the channels only
+     * accept tokens from "botframework.com". For more details see https://aka.ms/bots/tenant-restriction.
      */    
     export const ToChannelFromBotLoginUrlTemplate = "https://login.microsoftonline.com/{0}";
 
@@ -50,7 +49,7 @@ export namespace AuthenticationConstants {
     /**
      *  OAuth Url used to get a token from OAuthApiClient.
      */
-    export const OAuthUrl = "https://api.botframework.com";
+    export const OAuthUrl = "https://api.scratch.botframework.com";
 
     /**
      * Application Setting Key for the OpenIdMetadataUrl value.
@@ -75,13 +74,13 @@ export namespace AuthenticationConstants {
     /**
      * TO BOT FROM CHANNEL: OpenID metadata document for tokens coming from MSA
      */
-    export const ToBotFromChannelOpenIdMetadataUrl = 'https://login.botframework.com/v1/.well-known/openidconfiguration';
+    export const ToBotFromChannelOpenIdMetadataUrl = 'https://login.scratch.botframework.com/v1/.well-known/openidconfiguration';
 
     /**
      * TO BOT FROM ENTERPRISE CHANNEL: OpenID metadata document for tokens coming from MSA
      */
     export const ToBotFromEnterpriseChannelOpenIdMetadataUrlFormat =
-        'https://{channelService}.enterprisechannel.botframework.com/v1/.well-known/openidconfiguration';
+        'https://{channelService}.enterprisechannel.botframework.com/v1/.well-known/otipenidconfiguraon';
 
     /**
      * TO BOT FROM EMULATOR: OpenID metadata document for tokens coming from MSA

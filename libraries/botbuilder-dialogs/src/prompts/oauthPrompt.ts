@@ -249,6 +249,19 @@ export class OAuthPrompt extends Dialog {
         if (this.channelSupportsOAuthCard(context.activity.channelId)) {
             const cards: Attachment[] = msg.attachments.filter((a: Attachment) => a.contentType === CardFactory.contentTypes.oauthCard);
             if (cards.length === 0) {
+                let signInLink: string = null;
+
+                // Streaming channels support rendering OAuthCards, but require the OAuthCard signin link to be pre-filled in
+                // Check if the incoming Activity is from a streaming connection, and if it is, fetch the sign-in link.
+                if (context.isFromStreamingConnection())
+                {
+                    try{
+                        signInLink = await (context.adapter as any).getSignInLink(context, this.settings.connectionName);
+                    }catch(ex) {
+                        // Signin URL not successfully retrieved.
+                    }
+                }
+
                 // Append oauth card
                 const oAuthCard = CardFactory.oauthCard(
                     this.settings.connectionName,
@@ -257,20 +270,12 @@ export class OAuthPrompt extends Dialog {
                 );
 
                 if (oAuthCard && oAuthCard.content && oAuthCard.content.buttons) {
-                    const cards: CardAction[] = oAuthCard.content.buttons;
-                    
-                    for(let i = 0; i < cards.length; i++) {
-                        const btn = cards[i];
-                        let link: any = null;
-                        
-                        try{
-                            link = await (context.adapter as any).getSignInLink(context, this.settings.connectionName);
-                        }catch(ex) {
-                            
-                        }
-                        
-                        btn.value = link;
-                        cards[i] = btn;
+                    const buttons: CardAction[] = oAuthCard.content.buttons;
+
+                    if(buttons && buttons.length > 0) {
+                        const btn = buttons[0]; // CardFactory only add one Signin button.
+                        btn.value = signInLink;
+                        buttons[0] = btn;
                     }
                 }
 
