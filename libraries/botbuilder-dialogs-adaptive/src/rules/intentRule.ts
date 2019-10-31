@@ -7,7 +7,7 @@
  */
 import { RecognizerResult } from 'botbuilder-core';
 import { EventRule } from './eventRule';
-import { AdaptiveEventNames, SequenceContext , StepChangeList } from '../sequenceContext';
+import { AdaptiveEventNames, SequenceContext , ActionChangeList } from '../sequenceContext';
 import { DialogEvent, Dialog, DialogContextState } from 'botbuilder-dialogs';
 
 /**
@@ -24,10 +24,10 @@ export class IntentRule extends EventRule {
     /**
      * Creates a new `IntentRule` instance.
      * @param matches (Optional) list of intents, entities, and properties to filter to.
-     * @param steps (Optional) list of steps to update the plan with when triggered.
+     * @param actions (Optional) list of actions to update the plan with when triggered.
      */
-    constructor(matches?: string|string[], steps?: Dialog[]) {
-        super(AdaptiveEventNames.recognizedIntent, steps, true);
+    constructor(matches?: string|string[], actions?: Dialog[]) {
+        super(AdaptiveEventNames.recognizedIntent, actions, true);
         this.matches = Array.isArray(matches) ? matches : (matches !== undefined ? [matches] : []);
     }
 
