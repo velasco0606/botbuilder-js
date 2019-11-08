@@ -1,6 +1,29 @@
 const assert = require('assert');
-const { TeamsActivityHandler } = require('../');
-const { ActivityTypes, TestAdapter } = require('botbuilder-core');
+const { BotFrameworkAdapter, TeamsActivityHandler } = require('../');
+const { ActivityTypes, TestAdapter, TurnContext } = require('botbuilder-core');
+const nock = require('nock');
+
+beforeEach(function(done) {
+    nock.cleanAll();
+    done();
+});
+
+afterEach(function(done) {
+    nock.cleanAll();
+    done();
+});
+
+class TeamsInfoAdapter extends BotFrameworkAdapter {
+    constructor() {
+        super({ appId: 'appId', appPassword: 'appPassword' });
+    }
+}
+
+class TestContext extends TurnContext {
+    constructor(activity) {
+        super(new TeamsInfoAdapter(), activity);
+    }
+}
 
 function createInvokeActivity(name, value = {}, channelData = {}) {
     const activity = {
@@ -523,15 +546,6 @@ describe('TeamsActivityHandler', () => {
     });
 
     describe('should call onDialog handlers after successfully handling an', () => {
-
-        function createConvUpdateActivity(channelData) {
-            const activity = {
-                type: ActivityTypes.ConversationUpdate,
-                channelData
-            };
-            return activity;
-        }
-
         let onConversationUpdateCalled = false;
         let onDialogCalled = false;
 
@@ -545,52 +559,88 @@ describe('TeamsActivityHandler', () => {
             onDialogCalled = true;
         });
 
-        it('onTeamsMembersAdded routed activity', done => {
-            const bot = new TeamsActivityHandler();
+        class ConvUpdateHandler extends TeamsActivityHandler {
+            constructor() {
+                this.onConversationUpdate(async (context, next) => {
+                    assert(context, 'context not found');
+                    assert(next, 'next not found');
+                    onConversationUpdateCalled = true;
+                    await next();
+                });
+
+                this.onDialog(async (context, next) => {
+                    assert(context, 'context not found');
+                    assert(next, 'next not found');
+                    onDialogCalled = true;
+                    await next();
+                });
+            }
+        }
+
+        function assertMemberInfo(results, mockedData) {
+            assert(results && Array.isArray(results), `unexpected type for results arg: "${ typeof results }"`);
+            assert(mockedData && Array.isArray(mockedData), `unexpected type for mockedData arg: "${ typeof mockedData }"`);
+            assert.strictEqual(results.length, mockedData.length);
+
+            for(let i = 0; i < results.length; i++) {
+                assert.strictEqual(results[i].id, mockedData[i].id);
+                assert.strictEqual(results[i].name, mockedData[i].name);
+                assert.strictEqual(results[i].aadObjectId, mockedData[i].objectId);
+                assert.strictEqual(results[i].givenName, mockedData[i].givenName);
+                assert.strictEqual(results[i].surname, mockedData[i].surname);
+                assert.strictEqual(results[i].email, mockedData[i].email);
+                assert.strictEqual(results[i].userPrincipalName, mockedData[i].userPrincipalName);
+                assert.strictEqual(results[i].tenantId, mockedData[i].tenantId);
+            };
+        }
+
+        function createConvUpdateActivity(partialActivity) {
+            const activity = {
+                type: ActivityTypes.ConversationUpdate
+            };
+            return Object.assign(activity, partialActivity);
+        }
+
+        it('onTeamsMembersAdded routed activity', async () => {
+            const bot = new ConvUpdateHandler();
             let onTeamsMemberAddedEvent = false;
 
-            const membersAddedMock = [{ id: 'test' }, { id: 'id' }];
-            const team = { id: 'team' };
-            const activity = createConvUpdateActivity({ team, eventType: 'teamMemberAdded' });
-            activity.membersAdded = membersAddedMock;
+            const members = [
+                {
+                    "id": "29:User-One-Id",
+                    "name": "User One",
+                    "aadObjectId": "User-One-Object-Id",
+                    "givenName": "User",
+                    "surname": "One",
+                    "email": "User.One@microsoft.com",
+                    "userPrincipalName": "user1@microsoft.com",
+                    "tenantId": "tenantId-Guid"
+                }
+            ];
 
-            bot.onConversationUpdate(async (context, next) => {
-                assert(context, 'context not found');
-                assert(next, 'next not found');
-                onConversationUpdateCalled = true;
-                await next();
-            });
+            const getMembersExpectation = nock('https://smba.trafficmanager.net/amer')
+                .get('/v3/conversations/19%3AgeneralChannelIdgeneralChannelId%40thread.skype/members')
+                .reply(200, members);
+
 
             bot.onTeamsMembersAddedEvent(async (membersAdded, teamInfo, context, next) => {
                 assert(membersAdded, 'membersAdded not found');
                 assert(teamInfo, 'teamsInfo not found');
                 assert(context, 'context not found');
                 assert(next, 'next not found');
-                assert.strictEqual(teamInfo, team);
-                assert.strictEqual(membersAdded, membersAddedMock);
+                assert.strictEqual(teamInfo, teamActivity.channelData.team);
+                assertMemberInfo(membersAdded, members);
                 onTeamsMemberAddedEvent = true;
                 await next();
             });
 
-            bot.onDialog(async (context, next) => {
-                assert(context, 'context not found');
-                assert(next, 'next not found');
-                onDialogCalled = true;
-                await next();
-            });
+            const context = new TestContext(teamActivity);
+            await bot.run(context);
 
-            const adapter = new TestAdapter(async context => {
-                await bot.run(context);
-            });
-
-            adapter.send(activity)
-                .then(() => {
-                    assert(onTeamsMemberAddedEvent, 'onTeamsMemberAddedEvent handler not called');
-                    assert(onConversationUpdateCalled, 'handleTeamsFileConsentAccept handler not called');
-                    assert(onDialogCalled, 'onDialog handler not called');
-                    done();
-                })
-                .catch(err => done(err));
+            assert(getMembersExpectation.isDone());
+            assert(onTeamsMemberAddedEvent, 'onTeamsMemberAddedEvent handler not called');
+            assert(onConversationUpdateCalled, 'handleTeamsFileConsentAccept handler not called');
+            assert(onDialogCalled, 'onDialog handler not called');
         });
 
         it('onTeamsMembersRemoved routed activity', done => {
@@ -832,3 +882,41 @@ describe('TeamsActivityHandler', () => {
         });
     });
 });
+
+const teamActivity = {
+    "type": "conversationUpdate",
+    "id": "teamActivityId",
+    "channelId": "msteams",
+    "serviceUrl": "https://smba.trafficmanager.net/amer/",
+    "membersAdded": [
+        {
+            "id": "29:User-One-Id",
+            "name": "User One",
+            "aadObjectId": "User-aadObjectId"
+        }
+    ],
+    "conversation": {
+        "isGroup": true,
+        "conversationType": "channel",
+        "tenantId": "tenantId-Guid",
+        "id": "19:generalChannelIdgeneralChannelId@thread.skype;messageid=teamActivityId"
+    },
+    "recipient": {
+        "id": "28:teamsbot-Guid",
+        "name": "Teams Bot"
+    },
+    "channelData": {
+        "eventType": "teamMemberAdded",
+        "teamsChannelId": "19:generalChannelIdgeneralChannelId@thread.skype",
+        "teamsTeamId": "19:generalChannelIdgeneralChannelId@thread.skype",
+        "channel": {
+            "id": "19:generalChannelIdgeneralChannelId@thread.skype"
+        },
+        "team": {
+            "id": "19:generalChannelIdgeneralChannelId@thread.skype"
+        },
+        "tenant": {
+            "id": "tenantId-Guid"
+        }
+    }
+}

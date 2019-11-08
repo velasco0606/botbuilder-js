@@ -340,9 +340,8 @@ export class TeamsActivityHandler extends ActivityHandler {
     protected async dispatchConversationUpdateActivity(context: TurnContext): Promise<void> {
         await this.handle(context, 'ConversationUpdate', async () => {
 
-            if (context.activity.channelId == "msteams")
-            {
-                const channelData = context.activity.channelData as TeamsChannelData;
+            if (context.activity.channelId === 'msteams') {
+                const channelData = context.activity && context.activity.channelData as TeamsChannelData;
 
                 if (context.activity.membersAdded && context.activity.membersAdded.length > 0) {
                     return await this.onTeamsMembersAdded(context);
@@ -356,8 +355,7 @@ export class TeamsActivityHandler extends ActivityHandler {
                     return await super.dispatchConversationUpdateActivity(context);
                 }
         
-                switch (channelData.eventType)
-                {
+                switch (channelData.eventType) {
                     case 'channelCreated':
                         return await this.onTeamsChannelCreated(context);
         
