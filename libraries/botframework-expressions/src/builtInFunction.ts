@@ -594,14 +594,23 @@ export class BuiltInFunctions {
             (expr: Expression): void => BuiltInFunctions.validateArityAndAnyType(expr, 2, 3, ReturnType.String, ReturnType.Number));
     }
 
-    public static parseTimestamp(timeStamp: string, transform?: (arg0: moment.Moment) => any): { value: any; error: string } {
+    public static parseTimestamp(timeStamp: string, transform?: (arg0: moment.Moment | TimexProperty) => any): { value: any; error: string } {
         let value: any;
-        const error: string = this.verifyISOTimestamp(timeStamp);
+        let error: string = this.verifyISOTimestamp(timeStamp);
         if (error === undefined) {
             const parsed: moment.Moment = moment(timeStamp).utc();
             value = transform !== undefined ? transform(parsed) : parsed;
         }
 
+        else {
+            const timex: TimexProperty = new TimexProperty(timeStamp);
+            if  (Object.getOwnPropertyNames(timex).length === 0) {
+                error +=  `; ${ value } also cannot be parsed by timex expression.`
+            } else {
+                value = transform !== undefined ? transform(timex) : timex;
+            }
+        }
+        
         return { value, error };
     }
 
