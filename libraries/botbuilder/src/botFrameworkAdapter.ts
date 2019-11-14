@@ -230,6 +230,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
     private logic: (context: TurnContext) => Promise<void>;
     private streamingServer: IStreamingTransportServer;
     private webSocketFactory: NodeWebSocketFactoryBase;
+    private static readonly _conversations: Map<string, IStreamingTransportServer> = new Map<string, IStreamingTransportServer>(); 
 
     /**
      * Creates a new instance of the [BotFrameworkAdapter](xref:botbuilder.BotFrameworkAdapter) class.
@@ -897,7 +898,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
                     if (activity && BotFrameworkAdapter.isStreamingServiceUrl(activity.serviceUrl)) {
                         TokenResolver.checkForOAuthCards(this, context, activity as Activity);
                     }
-                    const client: ConnectorClient = this.createConnectorClient(activity.serviceUrl);
+                    const client: ConnectorClient = this.createConnectorClient(activity.serviceUrl, activity.conversation.id);
                     if (activity.type === 'trace' && activity.channelId !== 'emulator') {
                     // Just eat activity
                         responses.push({} as ResourceResponse);
@@ -954,13 +955,17 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
      * @remarks
      * Override this in a derived class to create a mock connector client for unit testing.
      */
-    public createConnectorClient(serviceUrl: string): ConnectorClient {
+    public createConnectorClient(serviceUrl: string, conversationId?: string): ConnectorClient {
         if (BotFrameworkAdapter.isStreamingServiceUrl(serviceUrl)) {
+
+            // Retrieve the StreamingServer that is correlated with the provided conversationId.
+            const streamingServer = conversationId ? BotFrameworkAdapter._conversations.get(conversationId) : this.streamingServer;
 
             // Check if we have a streaming server. Otherwise, requesting a connector client
             // for a non-existent streaming connection results in an error
-            if (!this.streamingServer) {
-                throw new Error(`Cannot create streaming connector client for serviceUrl ${serviceUrl} without a streaming connection. Call 'useWebSocket' or 'useNamedPipe' to start a streaming connection.`)
+            if (!streamingServer) {
+                console.error(`Cannot create streaming connector client for serviceUrl ${serviceUrl} without a pre-existing StreamingServer.`);
+                return;
             }
 
             return new ConnectorClient(
@@ -968,11 +973,11 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
                 {
                     baseUri: serviceUrl,
                     userAgent: USER_AGENT,
-                    httpClient: new StreamingHttpClient(this.streamingServer)
+                    httpClient: new StreamingHttpClient(streamingServer)
                 });
         }
 
-        const client: ConnectorClient = new ConnectorClient(this.credentials, { baseUri: serviceUrl, userAgent: USER_AGENT} );
+        const client: ConnectorClient = new ConnectorClient(this.credentials, { baseUri: serviceUrl, userAgent: USER_AGENT });
         return client;
     }
 
@@ -1105,6 +1110,10 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
 
         try {
             let context = new TurnContext(this, body);
+
+            // Store the conversationId and the streamingServer in a static cache for use in creating new ConnectorClients.            
+            BotFrameworkAdapter._conversations.set(context.activity.conversation.id, this.streamingServer);
+
             await this.runMiddleware(context, this.logic);
 
             if (body.type === ActivityTypes.Invoke) {
@@ -1206,7 +1215,7 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
      * Connects the handler to a WebSocket server and begins listening for incoming requests.
      * @param socket The socket to use when creating the server.
      */
-    private startWebSocket(socket: ISocket): void{
+    private startWebSocket(socket: ISocket): void {
         this.streamingServer = new WebSocketServer(socket, this);
         this.streamingServer.start();
     }
