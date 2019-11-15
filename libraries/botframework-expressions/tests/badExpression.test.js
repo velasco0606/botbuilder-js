@@ -192,6 +192,8 @@ const badExpressions =
       'addSeconds(notISOTimestamp, 1)', // not ISO datetime format
       'dayOfMonth(\'errortime\')', // error datetime format
       'dayOfMonth(timestamp, 1)', //should have 1 param
+      'dayOfMonth("T13:20:29")', //does not have dayOfMonth
+      'dayOfWeek("2012-03-15")', //does not have dayOfWeek
       'dayOfMonth(notISOTimestamp)', // not ISO datetime format
       'dayOfWeek(\'errortime\')', // error datetime format
       'dayOfWeek(timestamp, 1)', //should have 1 param
@@ -201,10 +203,11 @@ const badExpressions =
       'dayOfYear(notISOTimestamp)', // not ISO datetime format
       'month(\'errortime\')', // error datetime format
       'month(timestamp, 1)', //should have 1 param
-      'month(noISOTimestamp)', // not ISO datetime format
+      'month("XXXX-WXX-3T16")', //should have property month
+      //'month(noISOTimestamp)', // not ISO datetime format
       'date(\'errortime\')', // error datetime format
       'date(timestamp, 1)', //should have 1 param
-      'date(noISOTimestamp)', // not ISO datetime format
+      'date("2012-12")', // not ISO datetime format
       'year(\'errortime\')', // error datetime format
       'year(timestamp, 1)', // should have 1 param
       'year(noISOTimestamp)', // not ISO datetime format

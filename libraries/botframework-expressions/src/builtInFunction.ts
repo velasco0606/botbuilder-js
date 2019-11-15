@@ -594,21 +594,12 @@ export class BuiltInFunctions {
             (expr: Expression): void => BuiltInFunctions.validateArityAndAnyType(expr, 2, 3, ReturnType.String, ReturnType.Number));
     }
 
-    public static parseTimestamp(timeStamp: string, transform?: (arg0: moment.Moment | TimexProperty) => any): { value: any; error: string } {
+    public static parseTimestamp(timeStamp: string, transform?: (arg0: moment.Moment) => any): { value: any; error: string } {
         let value: any;
         let error: string = this.verifyISOTimestamp(timeStamp);
         if (error === undefined) {
             const parsed: moment.Moment = moment(timeStamp).utc();
             value = transform !== undefined ? transform(parsed) : parsed;
-        }
-
-        else {
-            const timex: TimexProperty = new TimexProperty(timeStamp);
-            if  (Object.getOwnPropertyNames(timex).length === 0) {
-                error +=  `; ${ value } also cannot be parsed by timex expression.`
-            } else {
-                value = transform !== undefined ? transform(timex) : timex;
-            }
         }
         
         return { value, error };
@@ -642,6 +633,19 @@ export class BuiltInFunctions {
             case 'Year': return { duration, tsStr: 'years' };
             default: return { duration, tsStr: undefined };
         }
+    }
+
+    private static parseToTimex(timestamp: string): {value: any; error: string} {
+        let result: any = undefined;
+        let error: string = undefined;
+        const timex = new TimexProperty(timestamp);
+        if (Object.getOwnPropertyNames(timex).length === 0) {
+            error = `${timestamp} is not a valid timex expression`;
+        } else {
+            result = timex;
+        }
+        
+        return {value: result, error};
     }
 
     private static addOrdinal(num: number): string {
@@ -2017,15 +2021,55 @@ export class BuiltInFunctions {
             new ExpressionEvaluator(
                 ExpressionType.DayOfMonth,
                 BuiltInFunctions.applyWithError(
-                    (args: any []): any => BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): number => dt.date()),
-                    BuiltInFunctions.verifyString),
+                    (args: any []): any => 
+                    {
+                        let result: any = undefined;
+                        let value: any = undefined;
+                        let error: string = undefined;
+                        ({value, error} = BuiltInFunctions.parseTimestamp(args[0],(dt: moment.Moment): number => dt.date()));
+                        if (error === undefined) {
+                            result = <number> value;
+                        } else {
+                            ({value, error} = BuiltInFunctions.parseToTimex(args[0]));
+                            if (error === undefined) {
+                                const timex: TimexProperty  = <TimexProperty> value;
+                                if (timex.hasOwnProperty("dayOfMonth")) {
+                                    result = timex.dayOfMonth;
+                                } else {
+                                    error = `can not infer the property of dayOfMonth in expression: ${ args[0] } `;
+                                }
+                            }
+                        }
+                        
+                        return {value: result, error};
+                    }, BuiltInFunctions.verifyString),
                 ReturnType.Number,
                 BuiltInFunctions.validateUnaryString),
             new ExpressionEvaluator(
                 ExpressionType.DayOfWeek,
                 BuiltInFunctions.applyWithError(
-                    (args: any []): any => BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): number => dt.days()),
-                    BuiltInFunctions.verifyString),
+                    (args: any []): any => 
+                    {
+                        let result: any = undefined;
+                        let value: any = undefined;
+                        let error: string = undefined;
+                        ({value, error} = BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): number => dt.days()));
+                        if (error === undefined) {
+                            result = <number> value;
+                        } else {
+                            ({value, error} = BuiltInFunctions.parseToTimex(args[0]));
+                            if (error === undefined) {
+                                const timex: TimexProperty  = <TimexProperty> value;
+                                if (timex.hasOwnProperty("dayOfWeek")) {
+                                    result = timex.dayOfWeek;
+                                } else {
+                                    error = `can not infer the property of dayOfWeek in expression: ${ args[0] } `;
+                                }
+                            }
+                        }
+                    
+                        return {value: result, error};
+                    },BuiltInFunctions.verifyString),
                 ReturnType.Number,
                 BuiltInFunctions.validateUnaryString),
             new ExpressionEvaluator(
@@ -2038,21 +2082,80 @@ export class BuiltInFunctions {
             new ExpressionEvaluator(
                 ExpressionType.Month,
                 BuiltInFunctions.applyWithError(
-                    (args: any []): any => BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): number => dt.month() + 1),
-                    BuiltInFunctions.verifyString),
+                    (args: any []): any => 
+                    {
+                        let result: any = undefined;
+                        let value: any = undefined;
+                        let error: string = undefined;
+                        ({value, error} = BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): number => dt.month() + 1));
+                        if (error === undefined) {
+                            result = <number> value;
+                        } else {
+                            ({value, error} =  BuiltInFunctions.parseToTimex(args[0]));
+                            if (error === undefined) {
+                                const timex: TimexProperty  = <TimexProperty> value;
+                                if (timex.hasOwnProperty("month")) {
+                                    result = timex.month;
+                                } else {
+                                    error = `can not infer the property of month in expression: ${ args[0] } `;
+                                }
+                            }
+                        }
+                    
+                        return {value: result, error};
+                    },BuiltInFunctions.verifyString),
                 ReturnType.Number,
                 BuiltInFunctions.validateUnaryString),
             new ExpressionEvaluator(
                 ExpressionType.Date,
                 BuiltInFunctions.applyWithError(
-                    (args: any []): any => BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): string => dt.format('M/DD/YYYY')),
-                    BuiltInFunctions.verifyString),
+                    (args: any []): any => 
+                    {
+                        let result: any = undefined;
+                        let value: any = undefined;
+                        let error: string = undefined;
+                        ({value, error} = BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): string => dt.format('M/DD/YYYY')));
+                        if (error === undefined) {
+                            result = <string> value;
+                        } else {
+                            ({value, error} =  BuiltInFunctions.parseToTimex(args[0]));
+                            if (error === undefined) {
+                                const timex: TimexProperty  = <TimexProperty> value;
+                                if (timex.types.has('definite') && timex.types.has('date')) {
+                                    result = <string>timex.month +'/'+<string>timex.dayOfMonth +'/' +<string>timex.year;
+                                } else {
+                                    error = `${ args[0] } is not a valid expression of a definite date`;
+                                }
+                            }
+                        }
+
+                        return {value: result, error};
+                    },BuiltInFunctions.verifyString),
                 ReturnType.String,
                 BuiltInFunctions.validateUnaryString),
             new ExpressionEvaluator(
                 ExpressionType.Year,
                 BuiltInFunctions.applyWithError(
-                    (args: any []): any => BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): number => dt.year()),
+                    (args: any []): any => 
+                    {
+                        let result: any = undefined;
+                        let value: any = undefined;
+                        let error: string = undefined;
+                        ({value, error} = BuiltInFunctions.parseTimestamp(args[0], (dt: moment.Moment): number => dt.year()));
+                        if (error === undefined) {
+                            result = <number> value;
+                        } else {
+                            ({value, error} =  BuiltInFunctions.parseToTimex(args[0]));
+                            if (error === undefined) {
+                                const timex: TimexProperty  = <TimexProperty> value;
+                                if (timex.hasOwnProperty("year")) {
+                                    result = timex.year;
+                                } else {
+                                    error = `can not infer the property of year in expression: ${ args[0] } `;
+                                }
+                            }
+                        }
+                    },
                     BuiltInFunctions.verifyString),
                 ReturnType.Number,
                 BuiltInFunctions.validateUnaryString),
@@ -2135,26 +2238,47 @@ export class BuiltInFunctions {
                 ExpressionType.GetTimeOfDay,
                 BuiltInFunctions.applyWithError(
                     (args: any []): any => {
+                        let result: any;
                         let value: any;
                         const error: string = BuiltInFunctions.verifyISOTimestamp(args[0]);
                         if (error === undefined) {
                             const thisTime: number = moment.parseZone(args[0]).hour() * 100 + moment.parseZone(args[0]).minute();
                             if (thisTime === 0) {
-                                value = 'midnight';
+                                result = 'midnight';
                             } else if (thisTime > 0 && thisTime < 1200) {
-                                value = 'morning';
+                                result = 'morning';
                             } else if (thisTime === 1200) {
-                                value = 'noon';
+                                result = 'noon';
                             } else if (thisTime > 1200 && thisTime < 1800) {
-                                value = 'afternoon';
+                                result = 'afternoon';
                             } else if (thisTime >= 1800 && thisTime <= 2200) {
-                                value = 'evening';
+                                result = 'evening';
                             } else if (thisTime > 2200 && thisTime <= 2359) {
-                                value = 'night';
+                                result = 'night';
+                            }
+                        } else {
+                            ({value, error} === BuiltInFunctions.parseToTimex(args[0]));
+                            if (error === undefined) {
+                                const timex: TimexProperty = <TimexProperty> value;
+                                const thisTime: number = timex.hour * 100 + timex.minute;
+                                if (thisTime === 0) {
+                                    result = 'midnight';
+                                } else if (thisTime > 0 && thisTime < 1200) {
+                                    result = 'morning';
+                                } else if (thisTime === 1200) {
+                                    result = 'noon';
+                                } else if (thisTime > 1200 && thisTime < 1800) {
+                                    result = 'afternoon';
+                                } else if (thisTime >= 1800 && thisTime <= 2200) {
+                                    result = 'evening';
+                                } else if (thisTime > 2200 && thisTime <= 2359) {
+                                    result = 'night';
+                                }
                             }
                         }
 
-                        return { value, error };
+
+                        return { value: result, error };
                     },
                     this.verifyString),
                 ReturnType.String,

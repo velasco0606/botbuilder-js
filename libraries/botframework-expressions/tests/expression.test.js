@@ -280,10 +280,14 @@ const dataSource = [
     ['addSeconds(timestamp, 1)', '2018-03-15T13:00:01.111Z'],
     ['addSeconds(timestamp, 1, \'MM-dd-yy hh-mm-ss\')', '03-15-18 01-00-01'],
     ['dayOfMonth(timestamp)', 15],
+    ['dayOfMonth(timexStr1)', 15],
     ['dayOfWeek(timestamp)', 4],//Thursday
+    ['dayOfWeek(timexStr2)', 3],//Wendsday
     ['dayOfYear(timestamp)', 74],
     ['month(timestamp)', 3],
+    ['month(timexStr1)', 3],
     ['date(timestamp)', '3/15/2018'],//Default. TODO
+    ['date(timexStr1)', '3/15/2018'],//Default. TODO
     ['year(timestamp)', 2018],
     ['length(utcNow())', 24],
     ['utcNow(\'MM-DD-YY\')', moment(new Date().toISOString()).format('MM-DD-YY')],
@@ -512,6 +516,8 @@ const scope = {
         { x: 3 },
     ],
     timestamp: '2018-03-15T13:00:00.111Z',
+    timexStr1: '2018-03-15',
+    timexStr2: 'XXXX-WXX-3T16',
     notISOTimestamp: '2018-03-15T13:00:00Z',
     timestampObj: new Date('2018-03-15T13:00:00.000Z'),
     unixTimestamp: 1521118800,
