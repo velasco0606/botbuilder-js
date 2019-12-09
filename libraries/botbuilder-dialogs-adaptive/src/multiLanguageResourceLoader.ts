@@ -23,7 +23,7 @@ export class MultiLanguageResourceLoader {
             for (const index in suffixs) {
                 const suffix = suffixs[index];
                 if ((locale === undefined || locale ==="") || (suffix !== undefined && suffix !== "")) {
-                    const resourcesWithSuffix = allResouces.filter(u => ParseLGFileName(u.id() === suffix));
+                    const resourcesWithSuffix = allResouces.filter(u => this.ParseLGFileName(u.id() === suffix));
                     resourcesWithSuffix.forEach(u => {
                         const resourceName = u.id();
                         const length = (suffix !== undefined && suffix !== "")? 3 : 4;
@@ -53,7 +53,7 @@ export class MultiLanguageResourceLoader {
             }
         }
 
-        return fallbackMultiLangResource(resourceMapping);
+        return this.fallbackMultiLangResource(resourceMapping);
     }
 
     public static ParseLGFileName(lgFileName: string): lgFileParsedResult {
@@ -98,9 +98,8 @@ export class MultiLanguageResourceLoader {
     private static fallbackMultiLangResource(resourceMapping: Map<string, IResource[]>): Map<string, IResource[]> {
         const resourcePoolDict = new Map<string, IResource[]>();
         for (const currentLocale of resourceMapping.keys()) {
-            const currentResourcePool = resourceMapping[currentLocale];
-            const existLocale  = this.matchingPoolDict(currentResourcePool, resourceMapping);
-            
+            const currentResourcePool: IResource[] = resourceMapping[currentLocale];
+            const existLocale  = Object.keys(resourcePoolDict).filter(u => resourcePoolDict[u] === currentResourcePool)[0];
             if (existLocale === undefined) {
                 resourcePoolDict.set(currentLocale, currentResourcePool);
             } else {
@@ -115,8 +114,48 @@ export class MultiLanguageResourceLoader {
         return resourcePoolDict;
     }
 
-    
 
+    private static findCommonAncestorLocale(locale1: string, locale2: string): string {
+        const languagePolicy = LanguagePolicy.getDefaultPolicy();
+        if (!languagePolicy.has(locale1) || !languagePolicy.has(locale2)) {
+            return "";
+        }
+
+        const key1Policy = languagePolicy[locale1];
+        const key2Policy = languagePolicy[locale2];
+        for (const key1Language of key1Policy) {
+            for (const key2Language of key2Policy) {
+                if (key1Language === key2Language) {
+                    return key1Language;
+                }
+            }
+        }
+        
+        return "";
+    }
+
+    private static HasSameResourcePool(resourceMapping1: IResource[], resourceMapping2: IResource[]): boolean {
+        if (resourceMapping1 === undefined && resourceMapping2 === undefined) {
+            return true;
+        }
+
+        if ((resourceMapping1 === undefined && resourceMapping2 !== undefined)
+        || (resourceMapping1 !== undefined && resourceMapping2 === undefined)
+        || resourceMapping1.length != resourceMapping2.length) {
+            return false;
+        }
+
+        const sortedResourceMapping1 = Array.from(resourceMapping1.sort());
+        const sortedResourceMapping2 = Array.from(resourceMapping2.sort());
+        for (const i in resourceMapping1){
+            if (sortedResourceMapping1[i].id() != sortedResourceMapping2[i].id())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 type lgFileParsedResult = {
