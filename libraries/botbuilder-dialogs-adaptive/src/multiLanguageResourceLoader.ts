@@ -13,9 +13,9 @@ import { LanguagePolicy } from  './languagePolicy'
  * load all lg resource and split them into different language group.
  */
 export class MultiLanguageResourceLoader {
-    public static load(resourceExplorer: ResourceExplorer): Map<string, IResource[]> {
+    public static async load(resourceExplorer: ResourceExplorer): Promise<Map<string, IResource[]>> {
         const resourceMapping: Map<string, IResource[]> = new Map<string, IResource[]>();
-        const allResouces: IResource[] = await resourceExplorer.getResources("lg");
+        const allResouces: IResource[] =  await resourceExplorer.getResources("lg");
         const languagePolicy = LanguagePolicy.getDefaultPolicy();
         for (const locale in languagePolicy) {
             let suffixs = languagePolicy[locale];
@@ -23,7 +23,7 @@ export class MultiLanguageResourceLoader {
             for (const index in suffixs) {
                 const suffix = suffixs[index];
                 if ((locale === undefined || locale ==="") || (suffix !== undefined && suffix !== "")) {
-                    const resourcesWithSuffix = allResouces.filter(u => this.ParseLGFileName(u.id() === suffix));
+                    const resourcesWithSuffix = allResouces.filter(u => this.ParseLGFileName(u.id()).language === suffix);
                     resourcesWithSuffix.forEach(u => {
                         const resourceName = u.id();
                         const length = (suffix !== undefined && suffix !== "")? 3 : 4;
