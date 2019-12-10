@@ -15,6 +15,7 @@ import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGenerator } from '../languageGenerator'
 import { TemplateEngineLanguageGenerator } from './templateEngineLanguageGenerator';
 import { normalize, extname } from 'path';
+import { ImportResolverDelegate } from '../../../botbuilder-lg/src';
 
 export class LanguageGeneratorManager {
     private _resourceExporer: ResourceExplorer;
@@ -26,7 +27,7 @@ export class LanguageGeneratorManager {
 
     public constructor(resourceManager: ResourceExplorer) {
         this._resourceExporer = resourceManager;
-        this._multilanguageResources = MultiLanguageResourceLoader.load(resourceManager);
+        this._multilanguageResources = await MultiLanguageResourceLoader.load(resourceManager);
 
         // load all LG resources
         this._resourceExporer.getResources("lg").then(
@@ -41,22 +42,22 @@ export class LanguageGeneratorManager {
     
     public _languageGenerator: Map<string, LanguageGenerator> = new Map<string, LanguageGenerator>();
 
-    public static resourceExplorerResolver(locale: string, id: string, resourceMapping: Map<string, IResource[]>): Function {
+    public static resourceExplorerResolver(locale: string, resourceMapping: Map<string, IResource[]>): ImportResolverDelegate {
         return (source: string, id: string) => {
-            const fallbaclLocale = MultiLanguageResourceLoader.FallbackLocale(locale, Array.from(resourceMapping.keys()));
+            const fallbaclLocale = MultiLanguageResourceLoader.fallbackLocale(locale, Array.from(resourceMapping.keys()));
             const resources: IResource[] = resourceMapping[fallbaclLocale];
 
             const resourceName = normalize(id);
             const resource:IResource = resources.filter(u => {
-                MultiLanguageResourceLoader.ParseLGFileName(u.id).prefix.toLowerCase() === MultiLanguageResourceLoader.ParseLGFileName(resourceName).prefix.toLowerCase();
+                MultiLanguageResourceLoader.ParseLGFileName(u.id()).prefix.toLowerCase() === MultiLanguageResourceLoader.ParseLGFileName(resourceName).prefix.toLowerCase();
             })[0];
 
             if (resource === undefined) {
-                return {content:"", path: resource.id()};
+                return {content:"", id: resource.id()};
             } else {
                 resource.readText().then(
                     text => {
-                        return {content: text, path: resource.id()};
+                        return {content: text, id: resource.id()};
                     }
                 );
             }

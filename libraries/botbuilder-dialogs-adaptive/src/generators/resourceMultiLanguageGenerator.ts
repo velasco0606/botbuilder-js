@@ -7,10 +7,30 @@
  */
 
 import { MultiLanguageGeneratorBase } from './multiLanguageGeneratorBase';
+import { TurnContext } from 'botbuilder-core';
+import { LanguageGenerator } from '../languageGenerator';
+import { LanguageGeneratorManager } from './languageGeneratorManager';
 
 /**
  * Initializes a new instance of the ResourceMultiLanguageGenerator class.
  */
 export class ResourceMultiLanguageGenerator extends MultiLanguageGeneratorBase {
-    //TODO
+    public declarative: string = "Microsoft.ResourceMultiLanguageGenerator";
+
+    public resourceId: string;
+
+    constructor(resourceId: string = undefined) {
+        super()
+        this.resourceId = resourceId;
+    }
+
+    public tryGetGenerator(context: TurnContext, locale: string): {exist: boolean, result: LanguageGenerator} {
+        const lgm: LanguageGeneratorManager = context.turnState.get(LanguageGeneratorManager);
+        const resourceId = (locale === undefined || locale === "")? this.resourceId : this.resourceId.replace(".lg", `.${locale}.lg`);
+        if (lgm._languageGenerator.has(resourceId)) {
+            return {exist: true, result: lgm._languageGenerator[resourceId]};
+        } else {
+            return {exist: false, result: undefined};
+        }
+    }
 }

@@ -8,13 +8,45 @@
 
 import { LanguageGenerator } from '../languageGenerator';
 import { TurnContext } from 'botbuilder-core';
+import {LanguagePolicy} from '../languagePolicy'
 /**
  * Class which manages cache of all LG resources from a ResourceExplorer. 
  * This class automatically updates the cache when resource change events occure.
  */
-export class MultiLanguageGeneratorBase implements LanguageGenerator{
-    // TODO
-    public generate(turnContext: TurnContext, template: string, data: object): Promise<string> {
-        throw new Error("Method not implemented.");
+export abstract class MultiLanguageGeneratorBase implements LanguageGenerator{
+    public languagePolicy = LanguagePolicy.getDefaultPolicy();
+
+    public abstract tryGetGenerator(context: TurnContext, locale: string): {exist:boolean, result: LanguageGenerator};
+    
+    public async generate(turnContext: TurnContext, template: string, data: object): Promise<string> {
+        const targetLocale = turnContext.activity.locale? turnContext.activity.locale.toLocaleLowerCase : "";
+        const locales: string[] = [""];
+        if (!this.languagePolicy.has(targetLocale)) {
+            if (!this.languagePolicy.has("")) {
+                throw Error(`No supported language found for ${targetLocale}`)
+            }
+        }
+
+        const generators: LanguageGenerator[] = [];
+        for (const locale of locales) {
+            if (this.tryGetGenerator(turnContext, locale).exist) {
+                generators.push(this.tryGetGenerator(turnContext, locale).result); 
+            }
+        }
+
+        if (generators.length === 0) {
+            throw Error(`No generator found for language ${targetLocale}`);
+        }
+
+        const errors: string[] = [];
+        for (const generator of generators) {
+            try {
+                return await generator.generate(turnContext, template, data);
+            } catch(e) {
+                errors.push(e);
+            }
+        }
+
+        throw Error(errors.join(",\n"));
     }
 }
