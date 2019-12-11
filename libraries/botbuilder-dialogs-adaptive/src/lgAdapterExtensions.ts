@@ -2,7 +2,6 @@ import { BotAdapter } from "botbuilder-core";
 import { ResourceExplorer } from "../../botbuilder-dialogs-declarative/src";
 import { LanguageGenerator } from "./languageGenerator"
 import { ResourceMultiLanguageGenerator } from "./generators/resourceMultiLanguageGenerator";
-import { LanguageGeneratorManager } from "./generators/languageGeneratorManager";
 /**
  * @module botbuilder-dialogs-adaptive
  */
@@ -12,7 +11,6 @@ import { LanguageGeneratorManager } from "./generators/languageGeneratorManager"
  */
 
 export class LGAdapterExtensions {
-    // TODO
     public static useLanguageGeneration(botAdapter: BotAdapter, resourceExplorer: ResourceExplorer, thirdParam: string | LanguageGenerator): BotAdapter {
         if (typeof thirdParam === "string") {
             let defaultLg = <string> thirdParam;
@@ -25,16 +23,15 @@ export class LGAdapterExtensions {
             }
 
             if (resourceExplorer.getResource(defaultLg) !== undefined) {
-                botAdapter.useLanguageGeneration(resourceExplorer, new ResourceMultiLanguageGenerator(defaultLg));
+                LGAdapterExtensions.useLanguageGeneration(botAdapter, resourceExplorer, new ResourceMultiLanguageGenerator(defaultLg));
             } else {
-                botAdapter.useLanguageGeneration(resourceExplorer, new ResourceMultiLanguageGenerator());
+                LGAdapterExtensions.useLanguageGeneration(botAdapter, resourceExplorer, new ResourceMultiLanguageGenerator());
             }
 
             return botAdapter;
         } else {
-            DeclarativeTypeLoader.AddComponent(new LanguageGenerationComponentRegistration());
-            botAdapter.use(new LanguageGeneratorManager( resourceExplorer !== undefined?))
-            botAdapter.use();
+            const languageGenerator = <LanguageGenerator> thirdParam;
+            LGAdapterExtensions.useLanguageGeneration(botAdapter, resourceExplorer, languageGenerator);
             return botAdapter;
         }
     }

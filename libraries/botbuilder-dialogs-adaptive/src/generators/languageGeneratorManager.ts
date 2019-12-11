@@ -14,7 +14,7 @@ import { IResource, ResourceExplorer, FileResource } from '../../../botbuilder-d
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGenerator } from '../languageGenerator'
 import { TemplateEngineLanguageGenerator } from './templateEngineLanguageGenerator';
-import { normalize, extname } from 'path';
+import { normalize } from 'path';
 import { ImportResolverDelegate } from '../../../botbuilder-lg/src';
 
 export class LanguageGeneratorManager {
@@ -23,11 +23,11 @@ export class LanguageGeneratorManager {
     /// <summary>
     /// multi language lg resources. en -> [resourcelist].
     /// </summary>
-    private readonly _multilanguageResources: Map<string, IResource[]>;
+    private _multilanguageResources: Map<string, IResource[]>;
 
     public constructor(resourceManager: ResourceExplorer) {
         this._resourceExporer = resourceManager;
-        this._multilanguageResources = await MultiLanguageResourceLoader.load(resourceManager);
+        //this._multilanguageResources = MultiLanguageResourceLoader.load(resourceManager);
 
         // load all LG resources
         this._resourceExporer.getResources("lg").then(
@@ -64,13 +64,15 @@ export class LanguageGeneratorManager {
         }
     }
 
-    private  ResourceExplorer_Changed(resources: IResource[]): void {
-        resources.filter(u => extname(u.id()).toLowerCase() === '.lg').forEach(resource => 
-            this._languageGenerator[resource.id()] = this.getTemplateEngineLanguageGenerator(resource))
-    }
+    // private  ResourceExplorer_Changed(resources: IResource[]): void {
+    //     resources.filter(u => extname(u.id()).toLowerCase() === '.lg').forEach(resource => 
+    //         this._languageGenerator[resource.id()] = this.getTemplateEngineLanguageGenerator(resource))
+    // }
 
-    private getTemplateEngineLanguageGenerator(resource: IResource): TemplateEngineLanguageGenerator {
-        FileResource
-        return new TemplateEngineLanguageGenerator(await resource.readText(), resource.id(), this._multilanguageResources);
+    private async getTemplateEngineLanguageGenerator(resource: IResource): Promise<TemplateEngineLanguageGenerator> {
+        this._multilanguageResources = await MultiLanguageResourceLoader.load(this._resourceExporer);
+        const text = await resource.readText();
+        return Promise.resolve(new TemplateEngineLanguageGenerator(text, resource.id(), this._multilanguageResources));
+        
     }
 }

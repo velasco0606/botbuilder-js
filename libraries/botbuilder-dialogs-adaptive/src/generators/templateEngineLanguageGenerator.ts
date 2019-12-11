@@ -27,11 +27,7 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
 
     public id:string = "";
 
-    constructor() {
-        this.engine = new TemplateEngine();
-    }
-
-    public templateEngineLanguageGenerator(lgTextOrFilePathOrEngine: string | TemplateEngine, id?: string, resourceMapping?: Map<string,IResource[]>) {
+    constructor(lgTextOrFilePathOrEngine?: string | TemplateEngine, id?: string, resourceMapping?: Map<string,IResource[]>) {
         if (typeof lgTextOrFilePathOrEngine === 'string' && id !== undefined && resourceMapping !== undefined) {
             this.id = id !== undefined? id : this.DEFAULTLABEL;
             const {prefix: _, language: locale} = MultiLanguageResourceLoader.ParseLGFileName(id);
@@ -55,9 +51,11 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
             }
         } else if (lgTextOrFilePathOrEngine instanceof TemplateEngine) {
             this.engine = lgTextOrFilePathOrEngine;
+        } else {
+            this.engine = new TemplateEngine();
         }
     }
-
+    
     public generate(turnContext: TurnContext, template: string, data: object):Promise<string> {
         this.engine = this.initTemplateEngine(turnContext);
 
