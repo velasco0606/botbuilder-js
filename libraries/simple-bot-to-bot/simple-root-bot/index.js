@@ -7,9 +7,9 @@ const restify = require('restify');
 
 // Import required bot services.
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
-const { BotFrameworkAdapter, BotFrameworkHttpClient, ChannelServiceRoutes, MemoryStorage, ConversationState, SkillHandler, SkillHttpClient } = require('botbuilder');
-const { MyConversationIdFactory } = require('./myConversationIdFactory');
-const { AuthenticationConfiguration, SimpleCredentialProvider, MicrosoftAppCredentials } = require('botframework-connector');
+const { BotFrameworkAdapter, ChannelServiceRoutes, MemoryStorage, ConversationState, SkillHandler, SkillHttpClient } = require('botbuilder');
+const { SkillConversationIdFactory } = require('./skillConversationIdFactory');
+const { AuthenticationConfiguration, SimpleCredentialProvider } = require('botframework-connector');
 
 // This bot's main dialog.
 const { RootBot } = require('./rootBot');
@@ -60,7 +60,7 @@ const memoryStorage = new MemoryStorage();
 const conversationState = new ConversationState(memoryStorage);
 
 // Create the conversationIdFactory
-const conversationIdFactory = new MyConversationIdFactory();
+const conversationIdFactory = new SkillConversationIdFactory();
 
 // Create the credential provider;
 const credentialProvider = new SimpleCredentialProvider(process.env.MicrosoftAppId, process.env.MicrosoftAppPassword);

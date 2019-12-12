@@ -1,7 +1,7 @@
 
 const { SkillConversationIdFactoryBase } = require('botbuilder');
 
-class MyConversationIdFactory extends SkillConversationIdFactoryBase {
+class SkillConversationIdFactory extends SkillConversationIdFactoryBase {
     constructor() {
         super();
         this.refs = {};
@@ -22,4 +22,4 @@ class MyConversationIdFactory extends SkillConversationIdFactoryBase {
     }
 }
 
-module.exports = { MyConversationIdFactory: MyConversationIdFactory };
+module.exports = { SkillConversationIdFactory: SkillConversationIdFactory };
