@@ -1,5 +1,5 @@
 import { BotAdapter } from "botbuilder-core";
-import { ResourceExplorer } from "../../botbuilder-dialogs-declarative/src";
+import { ResourceExplorer } from "../../botbuilder-dialogs-declarative/lib";
 import { LanguageGenerator } from "./languageGenerator"
 import { ResourceMultiLanguageGenerator } from "./generators/resourceMultiLanguageGenerator";
 /**

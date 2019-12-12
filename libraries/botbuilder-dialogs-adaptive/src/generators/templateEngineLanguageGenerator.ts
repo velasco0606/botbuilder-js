@@ -8,8 +8,8 @@
 
 import { LanguageGenerator } from '../languageGenerator';
 import { TurnContext } from 'botbuilder-core';
-import{ TemplateEngine } from '../../../botbuilder-lg/src';
-import { IResource } from '../../../botbuilder-dialogs-declarative/src';
+import{ TemplateEngine } from '../../../botbuilder-lg/lib';
+import { IResource } from '../../../botbuilder-dialogs-declarative/lib';
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGeneratorManager } from './languageGeneratorManager';
 import { normalize } from 'path';

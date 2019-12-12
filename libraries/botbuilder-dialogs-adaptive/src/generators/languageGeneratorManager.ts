@@ -10,12 +10,12 @@
  * Class which manages cache of all LG resources from a ResourceExplorer. 
  * This class automatically updates the cache when resource change events occure.
  */
-import { IResource, ResourceExplorer, FileResource } from '../../../botbuilder-dialogs-declarative/src';
+import { IResource, ResourceExplorer, FileResource } from '../../../botbuilder-dialogs-declarative/lib';
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGenerator } from '../languageGenerator'
 import { TemplateEngineLanguageGenerator } from './templateEngineLanguageGenerator';
 import { normalize } from 'path';
-import { ImportResolverDelegate } from '../../../botbuilder-lg/src';
+import { ImportResolverDelegate } from '../../../botbuilder-lg/lib';
 
 export class LanguageGeneratorManager {
     private _resourceExporer: ResourceExplorer;
