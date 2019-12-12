@@ -15,30 +15,30 @@ class RootBot extends ActivityHandler {
         this.conversationIdFactory = conversationIdFactory;
         this.skillClient = skillClient;
         this.activeSkillProperty = this.conversationState.createProperty('activeSkillProperty');
-        this.botFrameworkSkill = {};
-        this.botFrameworkSkill.id = process.env.SkillId;
-        this.botFrameworkSkill.appId = process.env.SkillAppId;
-        this.botFrameworkSkill.skillEndpoint = process.env.SkillEndpoint;
+        this.targetSkill = {};
+        this.targetSkill.id = process.env.SkillId;
+        this.targetSkill.appId = process.env.SkillAppId;
+        this.targetSkill.skillEndpoint = process.env.SkillEndpoint;
 
 
         // See https://aka.ms/about-bot-activity-message to learn more about the message and other activity types.
         this.onMessage(async (context, next) => {
             // Try to get the active skill
-            let currentSkill = await this.activeSkillProperty.get(context, null);
+            let activeSkill = await this.activeSkillProperty.get(context, null);
 
-            if (currentSkill) {
+            if (activeSkill) {
                 // Send the activity to the skill
-                await this.sendToSkill(context, currentSkill);
+                await this.sendToSkill(context, activeSkill);
             } else {
                 if (context.activity.text.toLowerCase() === 'skill') {
                     await context.sendActivity('Got it, connecting you to the skill...');
 
                     // Set active skill
-                    currentSkill = this.botFrameworkSkill;
-                    this.activeSkillProperty.set(context, currentSkill);
+                    activeSkill = this.targetSkill;
+                    this.activeSkillProperty.set(context, activeSkill);
 
                     // Send the activity to the skill
-                    await this.sendToSkill(context, currentSkill);
+                    await this.sendToSkill(context, activeSkill);
                 } else {
                     await context.sendActivity('Me no nothin\'. Say \'skill\' and I\'ll patch you through');
                 }
