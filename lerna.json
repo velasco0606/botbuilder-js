@@ -5,6 +5,7 @@
     "libraries/botbuilder-ai",
     "libraries/botbuilder-applicationinsights",
     "libraries/botbuilder-azure",
+    "libraries/botbuilder-connector",
     "libraries/botbuilder-core",
     "libraries/botbuilder-dialogs",
     "libraries/botbuilder-testing",
@@ -14,6 +15,7 @@
     "libraries/botframework-connector",
     "libraries/botframework-schema",
     "libraries/functional-tests",
+    "libraries/simple-bot-to-bot/simple-root-bot",
     "libraries/testbot",
     "libraries/botframework-streaming",
     "transcripts"
