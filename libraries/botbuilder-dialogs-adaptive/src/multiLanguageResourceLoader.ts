@@ -99,7 +99,7 @@ export class MultiLanguageResourceLoader {
         const resourcePoolDict = new Map<string, IResource[]>();
         for (const currentLocale of resourceMapping.keys()) {
             const currentResourcePool: IResource[] = resourceMapping[currentLocale];
-            const existLocale  = Object.keys(resourcePoolDict).filter(u => resourcePoolDict[u] === currentResourcePool)[0];
+            const existLocale  = Object.keys(resourcePoolDict).filter(u => this.hasSameResourcePool(resourcePoolDict[u], currentResourcePool))[0];
             if (existLocale === undefined) {
                 resourcePoolDict.set(currentLocale, currentResourcePool);
             } else {
@@ -134,7 +134,7 @@ export class MultiLanguageResourceLoader {
         return "";
     }
 
-    private static HasSameResourcePool(resourceMapping1: IResource[], resourceMapping2: IResource[]): boolean {
+    private static hasSameResourcePool(resourceMapping1: IResource[], resourceMapping2: IResource[]): boolean {
         if (resourceMapping1 === undefined && resourceMapping2 === undefined) {
             return true;
         }

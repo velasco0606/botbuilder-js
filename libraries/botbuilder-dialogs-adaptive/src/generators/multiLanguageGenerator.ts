@@ -18,6 +18,10 @@ export class MultiLanguageGenerator extends MultiLanguageGeneratorBase{
 
     public languageGenerators: Map<string, LanguageGenerator> = new Map<string, LanguageGenerator>();
 
+    public constructor() {
+        super();
+    }
+
     public tryGetGenerator(context: TurnContext, locale: string):  {exist:boolean, result: LanguageGenerator} {
         if (this.languageGenerators.has(locale)) {
             return {exist: true, result: this.languageGenerators[locale]};

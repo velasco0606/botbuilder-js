@@ -17,6 +17,8 @@ export abstract class MultiLanguageGeneratorBase implements LanguageGenerator{
     public languagePolicy = LanguagePolicy.getDefaultPolicy();
 
     public abstract tryGetGenerator(context: TurnContext, locale: string): {exist:boolean, result: LanguageGenerator};
+
+    public constructor() {};
     
     public async generate(turnContext: TurnContext, template: string, data: object): Promise<string> {
         const targetLocale = turnContext.activity.locale? turnContext.activity.locale.toLocaleLowerCase : "";
