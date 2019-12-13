@@ -1,0 +1,121 @@
+pool:
+  name: Hosted Mac Internal
+
+steps:
+- task: colinsalmcorner.colinsalmcorner-buildtasks.tag-build-task.tagBuildOrRelease@0
+  displayName: 'Tag Build with version number. (Skip if a fork PR to avoid access denied error.)'
+  inputs:
+    tags: 'Version=$(version)'
+  continueOnError: true
+  condition: and(succeeded(), eq(variables['System.PullRequest.IsFork'], 'false'))
+
+- task: NodeTool@0
+  displayName: 'Use Node 10.x'
+  inputs:
+    versionSpec: 10.x
+
+- task: Npm@1
+  displayName: 'npm install lerna ...'
+  inputs:
+    command: custom
+    verbose: false
+    customCommand: 'install --global lerna@3.2.1 nyc mocha'
+
+- task: Npm@1
+  displayName: '/tools npm install'
+  inputs:
+    workingDir: tools
+    verbose: false
+
+- task: Npm@1
+  displayName: 'npm install coveralls --save-dev'
+  inputs:
+    command: custom
+    workingDir: tools
+    verbose: false
+    customCommand: 'install coveralls --save-dev'
+
+- bash: |
+   sed -i '' 's/${Version}/$(version)/g' package.json 
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder-ai/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder-applicationinsights/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder-azure/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder-core/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder-dialogs/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder-lg/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botbuilder-testing/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botframework-config/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botframework-connector/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botframework-expressions/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botframework-schema/package.json
+   sed -i '' 's/${Version}/$(version)/g' libraries/botframework-streaming/package.json
+   
+  failOnStderr: true
+  displayName: 'Replace version number in package.json files'
+  env:
+    version: $(version)
+
+- task: Npm@1
+  displayName: 'npm update-versions'
+  inputs:
+    command: custom
+    verbose: false
+    customCommand: 'run update-versions'
+
+- task: Npm@1
+  displayName: 'npm run postinstall'
+  inputs:
+    command: custom
+    verbose: false
+    customCommand: 'run postinstall'
+
+- task: Npm@1
+  displayName: 'npm run build'
+  inputs:
+    command: custom
+    verbose: false
+    customCommand: 'run build'
+
+- task: azure-cosmosdb.emulator-public-preview.run-cosmosdbemulatorcontainer.CosmosDbEmulator@2
+  displayName: 'Run Azure Cosmos DB Emulator container'
+  enabled: false
+
+- task: Npm@1
+  displayName: 'npm run test-coverage'
+  inputs:
+    command: custom
+    verbose: false
+    customCommand: 'run test-coverage'
+
+- powershell: 'Get-ChildItem env:* | sort-object name'
+  displayName: 'Log environment variables'
+  continueOnError: true
+
+- powershell: |
+   Write-Host "Setting environment variable COVERALLS_REPO_TOKEN"
+   "##vso[task.setvariable variable=COVERALLS_REPO_TOKEN;]DwkME5qe0VGgTVqzzktfyDycYEh9QMbuu"
+  displayName: 'Set COVERALLS_REPO_TOKEN - set this only after all testing is complete, for improved security.'
+  continueOnError: true
+
+- task: Npm@1
+  displayName: 'Upload coverage report to Coveralls https://coveralls.io/github/microsoft/botbuilder-js'
+  inputs:
+    command: custom
+    verbose: false
+    customCommand: 'run upload-coverage'
+  continueOnError: true
+
+- task: Npm@1
+  displayName: 'npm run eslint'
+  inputs:
+    command: custom
+    verbose: false
+    customCommand: 'run eslint'
+
+- powershell: |
+   pushd ..
+   Get-ChildItem -Recurse -Force | Where {$_.FullName -notlike "*node_modules*"}
+  displayName: 'Dir workspace except node-modules (takes 12 seconds)'
+  continueOnError: true
+  condition: succeededOrFailed()
