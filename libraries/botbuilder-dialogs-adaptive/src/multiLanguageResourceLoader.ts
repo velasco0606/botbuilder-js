@@ -1,5 +1,4 @@
-import { IResource } from './botbuilder-dialogs-declarative';
-import { ResourceExplorer } from './botbuilder-dialogs-declarative'
+import { IResource, ResourceExplorer } from 'botbuilder-dialogs-declarative';
 import { LanguagePolicy } from  './languagePolicy'
 /**
  * @module botbuilder-dialogs-adaptive

@@ -15,7 +15,7 @@ function getTurnContext(locale, generator) {
 
 describe("LGLanguageGenerator", function() {
     this.timeout(5000);
-    resourseExplorer = ResourceExplorer.loadProject(GetExampleFilePath(), [], false);
+    const resourseExplorer = ResourceExplorer.loadProject(GetExampleFilePath(), [], false);
     it("MultiLangGenerator",  async function () {
         const lg = new MultiLanguageGenerator();
         const multiLanguageResources = await MultiLanguageResourceLoader.load(resourseExplorer);
