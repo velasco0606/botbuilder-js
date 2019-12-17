@@ -19,7 +19,11 @@
                     "actions": [
                         {
                             "$type": "Microsoft.TextInput",
+<<<<<<< HEAD
                             "valueProperty": "user.name",
+=======
+                            "property": "user.name",
+>>>>>>> 4.future
                             "prompt": "Hello, I'm Zoidberg. What is your name?"
                         }
                     ]
@@ -32,14 +36,14 @@
         },
         {
             "$type": "Microsoft.OnIntent",
-            "intent": "#JokeIntent",
+            "intent": "JokeIntent",
             "actions": [
                 "BeginDialog.TellJokeDialog"
             ]
         },
         {
             "$type": "Microsoft.OnIntent",
-            "intent": "#FortuneTellerIntent",
+            "intent": "FortuneTellerIntent",
             "actions": [
                 "BeginDialog.FortuneTellerDialog"
             ]
