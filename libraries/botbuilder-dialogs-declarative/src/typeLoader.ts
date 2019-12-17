@@ -6,9 +6,8 @@
  * Licensed under the MIT License.
  */
 
-import { Configurable } from "botbuilder-dialogs";
 import { TypeFactory } from "./factory/typeFactory";
-import { IResourceProvider } from "./resources/resourceProvider";
+import { ComponentRegistration } from "./componentRegistration";
 import { ResourceExplorer } from "./resources/resourceExplorer";
 
 export class TypeLoader {
@@ -16,6 +15,14 @@ export class TypeLoader {
     constructor(private factory?: TypeFactory, private resourceExplorer?: ResourceExplorer) {
         if (!this.factory) {
             this.factory = new TypeFactory();
+        }
+    }
+
+    public addComponent(component: ComponentRegistration) {
+        const types = component.getTypes();
+        for (let i = 0; i < types.length; i++) {
+            const type = types[i];
+            this.factory.register(type.name, type.builder);
         }
     }
 
@@ -30,8 +37,8 @@ export class TypeLoader {
         }
 
         // Recursively load object tree leaves to root, calling the factory to build objects from json tokens
-        if (jsonObj['$type']) {
-            const type = jsonObj['$type'];
+        const type = jsonObj['$type'] || jsonObj['$kind'];
+        if (type) {
             const obj = this.factory.build(type, jsonObj);
 
             if(!obj) {
@@ -41,7 +48,7 @@ export class TypeLoader {
             // Iterate through json object properties and check whether
             // there are typed objects that require factory calls
             for (const key in jsonObj) {
-                if (jsonObj.hasOwnProperty(key) && key != "$type") {
+                if (jsonObj.hasOwnProperty(key) && key != '$type' && key != '$kind') {
                     const setting = jsonObj[key];
 
                     // Process arrays
@@ -58,7 +65,7 @@ export class TypeLoader {
                             obj[key] = setting;
                         }
                     // Process objects in case recursion is needed
-                    } else if (typeof setting == 'object' && setting.hasOwnProperty('$type')) {
+                    } else if (typeof setting == 'object' && (setting.hasOwnProperty('$type') || setting.hasOwnProperty('$kind'))) {
                         obj[key] = await this.loadObjectTree(setting);
                     // Process string references where an object is expected using resourceProvider
                     } else if (setting && typeof setting == 'string' && !setting.includes('=') && obj.hasOwnProperty(key) && typeof obj[key] != 'string' && this.resourceExplorer) {
@@ -70,9 +77,8 @@ export class TypeLoader {
                         } else if (!obj[key]){
                             obj[key] = setting;
                         }
-                    }
-                    else if (!obj[key]) {
-                        obj[key] = setting;
+                    } else if (!obj[key]) {
+                        obj[key] = setting; 
                     }
                 }
             }
@@ -83,8 +89,9 @@ export class TypeLoader {
             let resource = await this.resourceExplorer.getResource(`${jsonObj}.dialog`)
             if (resource) {
                 const text = await resource.readText();
-
                 return await this.loadObjectTree(JSON.parse(text));
+            } else {
+                return jsonObj;
             }
         }
 

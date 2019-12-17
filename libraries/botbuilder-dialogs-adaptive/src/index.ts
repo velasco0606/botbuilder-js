@@ -16,5 +16,6 @@ export * from './adaptiveDialog';
 export * from './expressionProperty';
 export * from './sequenceContext';
 export * from './stringTemplate';
-export * from './multiLanguageResourceLoader';
-export * from './lgAdapterExtensions';
+export * from './testing';
+export * from './adaptiveComponentRegistration';
+export * from './adaptiveTestComponentRegistration';

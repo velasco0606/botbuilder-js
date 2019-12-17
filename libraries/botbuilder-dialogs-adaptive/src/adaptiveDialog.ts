@@ -31,6 +31,17 @@ export interface AdaptiveDialogConfiguration extends DialogConfiguration {
      * (Optional) recognizer used to analyze any message utterances.
      */
     recognizer?: Recognizer;
+
+    /**
+     * (Optional) flag that determines whether the dialog automatically ends when the plan is out
+     * of actions. Defaults to `false` for the root dialog and `true` for child dialogs.
+     */
+    autoEndDialog?: boolean;
+
+    /**
+     * (Optional) The selector for picking the possible events to execute.
+     */
+    selector: TriggerSelector;
 }
 
 export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
@@ -217,7 +228,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
                         };
                         await this.processEvent(sequence, recognizeUtteranceEvent, true);
 
-                        const recognized = sequence.state.getValue<RecognizerResult>('turn.recognized');
+                        const recognized = sequence.state.getValue<RecognizerResult>('turn.recognized').value;
                         const recognizedIntentEvent: DialogEvent = {
                             name: AdaptiveEventNames.recognizedIntent,
                             value: recognized,
@@ -391,7 +402,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
             // Increment turns action count
             // - This helps dialogs being resumed from an interruption to determine if they
             //   should re-prompt or not.
-            const actionCount = sequence.state.getValue('turn.actionCount');
+            const actionCount = sequence.state.getValue('turn.actionCount').value;
             sequence.state.setValue('turn.actionCount', typeof actionCount == 'number' ? actionCount + 1 : 1);
 
             // Is the action waiting for input or were we cancelled?
