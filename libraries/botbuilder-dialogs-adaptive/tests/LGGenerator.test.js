@@ -2,7 +2,7 @@
 const { MultiLanguageGenerator, MultiLanguageResourceLoader, TemplateEngineLanguageGenerator,ResourceMultiLanguageGenerator } = require('../lib');
 const { ResourceExplorer } = require('../../botbuilder-dialogs-declarative');
 const assert = require('assert');
-const should = require('should')
+const { TestAdapter, TurnContext } = require('botbuilder-core');
 
 function GetExampleFilePath() {
     return `${__dirname}/tests/`;
@@ -10,13 +10,17 @@ function GetExampleFilePath() {
 
 
 function getTurnContext(locale, generator) {
-
+    const context = new TurnContext(
+        new TestAdapter().use()
+    )
 }
+
+async function  {}
 
 describe("LGLanguageGenerator", function() {
     this.timeout(5000);
     const resourseExplorer = ResourceExplorer.loadProject(GetExampleFilePath(), [], false);
-    it("MultiLangGenerator",  async function () {
+    it("TestMultiLangGenerator",  async function () {
         const lg = new MultiLanguageGenerator();
         const multiLanguageResources = await MultiLanguageResourceLoader.load(resourseExplorer);
         lg.languageGenerators[""] = new TemplateEngineLanguageGenerator(resourseExplorer.getResources("test.lg").text(), "test.lg", multiLanguageResources);
@@ -56,7 +60,7 @@ describe("LGLanguageGenerator", function() {
         assert.equal(result10, "default2");
     });
 
-    it("MultiLangGenerator",  async function () {
+    it("TestResourceMultiLangGenerator",  async function () {
         const lg = ResourceMultiLanguageGenerator("test.lg");
 
         const result1 = await lg.generate(getTurnContext("en-us", lg), "@{test()}", undefined);
