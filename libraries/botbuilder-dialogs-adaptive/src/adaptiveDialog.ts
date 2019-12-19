@@ -11,7 +11,7 @@ import {
 } from 'botbuilder-core';
 import {
     Dialog, DialogInstance, DialogReason, DialogTurnResult, DialogTurnStatus, DialogEvent,
-    DialogContext, DialogConfiguration, DialogContainer, DialogDependencies
+    DialogContext, DialogConfiguration, DialogContainer, DialogDependencies, PathInterface
 } from 'botbuilder-dialogs';
 import {
     AdaptiveEventNames, SequenceContext, AdaptiveDialogState, ActionState
@@ -364,6 +364,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
             const evt = this.triggers[selection[0]];
             const changes = await evt.execute(sequenceContext);
             if (changes && changes.length > 0) {
+                console.log(`Activate path: ${evt.path}`);
                 sequenceContext.queueChanges(changes[0]);
                 return true;
             }
@@ -391,6 +392,11 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
         if (action) {
             // Continue current action
             console.log(`running action: ${action.actions[0].dialogId}`);
+            const dialogId = action.actions[0].dialogId;
+            const dialog = action.findDialog(dialogId);
+            if (dialog) {
+                console.log(`Activate path: ${dialog.path}`);
+            }
             let result = await action.continueDialog();
 
             // Start action if not continued

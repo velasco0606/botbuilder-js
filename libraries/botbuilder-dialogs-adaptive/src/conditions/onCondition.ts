@@ -5,11 +5,11 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { Dialog, DialogDependencies } from 'botbuilder-dialogs';
+import { Dialog, DialogDependencies, PathInterface } from 'botbuilder-dialogs';
 import { Expression, ExpressionParserInterface, ExpressionType, Constant, ExpressionEngine } from 'botframework-expressions';
 import { SequenceContext, ActionChangeList, ActionState, ActionChangeType } from '../sequenceContext';
 
-export class OnCondition implements DialogDependencies {
+export class OnCondition implements DialogDependencies, PathInterface {
     /**
      * Evaluates the rule and returns a predicted set of changes that should be applied to the
      * current plan.
@@ -22,6 +22,7 @@ export class OnCondition implements DialogDependencies {
     private readonly _extraConstraints: Expression[] = [];
     private _fullConstraint: Expression;
 
+    public path: string;
 
     /**
      * Gets or sets the condition which needs to be met for the actions to be executed (OPTIONAL).

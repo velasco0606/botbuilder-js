@@ -5,6 +5,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const restify = require("restify");
 const botbuilder_1 = require("botbuilder");
 const botbuilder_dialogs_1 = require("botbuilder-dialogs");
+const botbuilder_dialogs_adaptive_1 = require("botbuilder-dialogs-adaptive");
 const botbuilder_dialogs_declarative_1 = require("botbuilder-dialogs-declarative");
 const fs = require("fs");
 // Create HTTP server.
@@ -24,8 +25,8 @@ const adapter = new botbuilder_1.BotFrameworkAdapter({
 // const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/08 - ExternalLanguage"
 // const path = "../../libraries/botbuilder-dialogs-declarative/tests/resources/07 - BeginDialog/BeginDialog.main.dialog"
 // const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/07 - BeginDialog"
-const path = "./libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps/DoSteps.main.dialog";
-const resourcesFolder = "./libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps";
+const path = "../../libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps/DoSteps.main.dialog";
+const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps";
 // const path = "../../libraries/botbuilder-dialogs-declarative/tests/resources/04 - TextInput/NumberInput.main.dialog"
 // const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/04 - TextInput"
 let dialogManager = null;
@@ -56,8 +57,9 @@ async function LoadDialog(path, resourcesFolder) {
                 LoadDialog(path, resourcesFolder);
             });
             // resourceExplorer.registerDirectory(`./libraries/botbuilder-dialogs-declarative/tests/resources`);
-            resourceExplorer.addFolder(`./libraries/botbuilder-dialogs-declarative/tests/resources`);
+            resourceExplorer.addFolder(`../../libraries/botbuilder-dialogs-declarative/tests/resources`);
             loader = new botbuilder_dialogs_declarative_1.TypeLoader(null, resourceExplorer);
+            loader.addComponent(new botbuilder_dialogs_adaptive_1.AdaptiveComponentRegistration());
         }
         const dialog = await loader.load(json);
         dialogManager.rootDialog = dialog;

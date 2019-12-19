@@ -4,6 +4,7 @@
 import * as restify from 'restify';
 import { BotFrameworkAdapter, MemoryStorage, ConversationState, UserState } from 'botbuilder';
 import { DialogManager, Dialog } from 'botbuilder-dialogs';
+import { AdaptiveComponentRegistration } from 'botbuilder-dialogs-adaptive';
 import { TypeLoader, FileResourceProvider, ResourceExplorer} from 'botbuilder-dialogs-declarative';
 import fs = require('fs');
 import { resolve } from 'path';
@@ -27,8 +28,8 @@ const adapter = new BotFrameworkAdapter({
 // const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/08 - ExternalLanguage"
 // const path = "../../libraries/botbuilder-dialogs-declarative/tests/resources/07 - BeginDialog/BeginDialog.main.dialog"
 // const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/07 - BeginDialog"
-const path = "./libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps/DoSteps.main.dialog";
-const resourcesFolder = "./libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps";
+const path = "../../libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps/DoSteps.main.dialog";
+const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/06 - DoSteps";
 // const path = "../../libraries/botbuilder-dialogs-declarative/tests/resources/04 - TextInput/NumberInput.main.dialog"
 // const resourcesFolder = "../../libraries/botbuilder-dialogs-declarative/tests/resources/04 - TextInput"
 
@@ -63,8 +64,9 @@ async function LoadDialog(path, resourcesFolder){
                     LoadDialog(path, resourcesFolder);
                 });
                 // resourceExplorer.registerDirectory(`./libraries/botbuilder-dialogs-declarative/tests/resources`);
-                resourceExplorer.addFolder(`./libraries/botbuilder-dialogs-declarative/tests/resources`);
+                resourceExplorer.addFolder(`../../libraries/botbuilder-dialogs-declarative/tests/resources`);
                 loader = new TypeLoader(null, resourceExplorer);
+                loader.addComponent(new AdaptiveComponentRegistration());
             }
             const dialog = await loader.load(json);
             dialogManager.rootDialog = dialog as Dialog;

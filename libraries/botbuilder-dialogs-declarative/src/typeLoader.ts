@@ -9,6 +9,7 @@
 import { TypeFactory } from "./factory/typeFactory";
 import { ComponentRegistration } from "./componentRegistration";
 import { ResourceExplorer } from "./resources/resourceExplorer";
+import { PathInterface } from "botbuilder-dialogs";
 
 export class TypeLoader {
 
@@ -31,7 +32,7 @@ export class TypeLoader {
         return await this.loadObjectTree(jsonObj);
     }
 
-    private async loadObjectTree(jsonObj: object) : Promise<object> {
+    private async loadObjectTree(jsonObj: object, path: string = '') : Promise<object> {
         if (!jsonObj) {
             return null;
         }
@@ -45,6 +46,8 @@ export class TypeLoader {
                 return obj;
             }
 
+            (obj as PathInterface).path = path;
+
             // Iterate through json object properties and check whether
             // there are typed objects that require factory calls
             for (const key in jsonObj) {
@@ -57,8 +60,10 @@ export class TypeLoader {
                             obj[key] = [];
 
                             // Recursively check for factory
-                            for (let item of setting) {
-                                let loadedItem = await this.loadObjectTree(item);
+                            for (let i = 0; i < setting.length; i++) {
+                                const item = setting[i];
+                                const childPath = `${path}/${key}[${i}]`;
+                                let loadedItem = await this.loadObjectTree(item, childPath);
                                 obj[key].push(loadedItem);
                             }
                         } else {
@@ -66,7 +71,7 @@ export class TypeLoader {
                         }
                     // Process objects in case recursion is needed
                     } else if (typeof setting == 'object' && (setting.hasOwnProperty('$type') || setting.hasOwnProperty('$kind'))) {
-                        obj[key] = await this.loadObjectTree(setting);
+                        obj[key] = await this.loadObjectTree(setting, `${path}/${key}`);
                     // Process string references where an object is expected using resourceProvider
                     } else if (setting && typeof setting == 'string' && !setting.includes('=') && obj.hasOwnProperty(key) && typeof obj[key] != 'string' && this.resourceExplorer) {
                         let resource = await this.resourceExplorer.getResource(`${setting}.dialog`)
