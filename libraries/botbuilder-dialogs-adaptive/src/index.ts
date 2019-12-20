@@ -19,3 +19,5 @@ export * from './stringTemplate';
 export * from './testing';
 export * from './adaptiveComponentRegistration';
 export * from './adaptiveTestComponentRegistration';
+export * from './languageGenerationMiddleware';
+export * from './languageGenerator';

@@ -1,8 +1,8 @@
-import { Middleware, TurnContext } from "botbuilder-core";
-import { ResourceExplorer, TypeLoader } from "botbuilder-dialogs-declarative";
-import { LanguageGenerator } from "./languageGenerator"
-import { ResourceMultiLanguageGenerator } from "./generators/resourceMultiLanguageGenerator";
-import { TemplateEngineLanguageGenerator } from "./generators";
+import { Middleware, TurnContext } from 'botbuilder-core';
+import { ResourceExplorer } from 'botbuilder-dialogs-declarative';
+import { LanguageGenerator } from './languageGenerator'
+import { ResourceMultiLanguageGenerator } from './generators/resourceMultiLanguageGenerator';
+import { TemplateEngineLanguageGenerator } from './generators';
 
 /**
  * @module botbuilder-dialogs-adaptive
@@ -16,12 +16,12 @@ export class LanguageGeneratorMiidleWare implements Middleware {
     private readonly _resourceExplorer: ResourceExplorer;
     private readonly _defaultLg: string;
     private _languageGenerator: LanguageGenerator;
-    private resourceExplorerKey = Symbol("resourceExplorer");
-    private languageGeneratorKey = Symbol("languageGenerator");
+    private resourceExplorerKey = Symbol('resourceExplorer');
+    private languageGeneratorKey = Symbol('languageGenerator');
 
-    constructor(resourceExpolrer: ResourceExplorer = undefined, defaultLg: string = undefined) {
+    public constructor(resourceExpolrer: ResourceExplorer = undefined, defaultLg: string = undefined) {
         this._resourceExplorer = resourceExpolrer? resourceExpolrer : new ResourceExplorer();
-        this._defaultLg = defaultLg? defaultLg : "main.lg";
+        this._defaultLg = defaultLg? defaultLg : 'main.lg';
     }
 
     /**
@@ -47,7 +47,7 @@ export class LanguageGeneratorMiidleWare implements Middleware {
         
         context.turnState.set(this.resourceExplorerKey, this._resourceExplorer);
         if (this._languageGenerator === undefined) {
-            throw new Error("no language generator defined")
+            throw new Error('no language generator defined');
         } else{
             context.turnState.set(this.languageGeneratorKey, this._languageGenerator);
         }
