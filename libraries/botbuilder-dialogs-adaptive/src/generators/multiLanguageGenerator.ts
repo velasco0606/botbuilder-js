@@ -14,7 +14,7 @@ import { TurnContext } from 'botbuilder-core';
  * and has a policy which controls fallback (try en-us -> en -> default).
  */
 export class MultiLanguageGenerator extends MultiLanguageGeneratorBase{
-    public declarativeType: string = "Microsoft.MultiLanguageGenerator";
+    public declarativeType: string = 'Microsoft.MultiLanguageGenerator';
 
     public languageGenerators: Map<string, LanguageGenerator> = new Map<string, LanguageGenerator>();
 
@@ -22,9 +22,13 @@ export class MultiLanguageGenerator extends MultiLanguageGeneratorBase{
         super();
     }
 
-    public tryGetGenerator(context: TurnContext, locale: string):  {exist:boolean, result: LanguageGenerator} {
+    public tryGetGenerator(context: TurnContext, locale: string):  {exist: boolean; result: LanguageGenerator} {
+        //console.log(this.languageGenerators);
+        //console.log(locale);
         if (this.languageGenerators.has(locale)) {
-            return {exist: true, result: this.languageGenerators[locale]};
+            //console.log("true");
+            //console.log(this.languageGenerators.get(locale));
+            return {exist: true, result: this.languageGenerators.get(locale)};
         } else {
             return {exist: false, result: undefined}; 
         }

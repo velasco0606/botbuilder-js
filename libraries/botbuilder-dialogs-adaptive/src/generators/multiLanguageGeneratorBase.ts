@@ -8,7 +8,7 @@
 
 import { LanguageGenerator } from '../languageGenerator';
 import { TurnContext } from 'botbuilder-core';
-import {LanguagePolicy} from '../languagePolicy'
+import {LanguagePolicy} from '../languagePolicy';
 /**
  * Class which manages cache of all LG resources from a ResourceExplorer. 
  * This class automatically updates the cache when resource change events occure.
@@ -16,19 +16,22 @@ import {LanguagePolicy} from '../languagePolicy'
 export abstract class MultiLanguageGeneratorBase implements LanguageGenerator{
     public languagePolicy = LanguagePolicy.getDefaultPolicy();
 
-    public abstract tryGetGenerator(context: TurnContext, locale: string): {exist:boolean, result: LanguageGenerator};
+    public abstract tryGetGenerator(context: TurnContext, locale: string): {exist: boolean; result: LanguageGenerator};
 
     public constructor() {};
     
     public async generate(turnContext: TurnContext, template: string, data: object): Promise<string> {
-        const targetLocale = turnContext.activity.locale? turnContext.activity.locale.toLocaleLowerCase : "";
-        const locales: string[] = [""];
-        if (!this.languagePolicy.has(targetLocale)) {
-            if (!this.languagePolicy.has("")) {
-                throw Error(`No supported language found for ${targetLocale}`)
+        const targetLocale = turnContext.activity.locale? turnContext.activity.locale.toLocaleLowerCase() : '';
+        let locales: string[] = [''];
+        if (this.languagePolicy[targetLocale] === undefined) {
+            if (this.languagePolicy[''] === undefined) {
+                throw Error(`No supported language found for ${ targetLocale }`);
             }
+        } else {
+            locales = this.languagePolicy[targetLocale];
         }
 
+        console.log(locales);
         const generators: LanguageGenerator[] = [];
         for (const locale of locales) {
             if (this.tryGetGenerator(turnContext, locale).exist) {
@@ -37,7 +40,7 @@ export abstract class MultiLanguageGeneratorBase implements LanguageGenerator{
         }
 
         if (generators.length === 0) {
-            throw Error(`No generator found for language ${targetLocale}`);
+            throw Error(`No generator found for language ${ targetLocale }`);
         }
 
         const errors: string[] = [];
@@ -49,6 +52,6 @@ export abstract class MultiLanguageGeneratorBase implements LanguageGenerator{
             }
         }
 
-        throw Error(errors.join(",\n"));
+        throw Error(errors.join(',\n'));
     }
 }

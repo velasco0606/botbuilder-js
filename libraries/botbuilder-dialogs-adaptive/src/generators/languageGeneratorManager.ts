@@ -12,7 +12,7 @@
  */
 import { IResource, ResourceExplorer } from 'botbuilder-dialogs-declarative';
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
-import { LanguageGenerator } from '../languageGenerator'
+import { LanguageGenerator } from '../languageGenerator';
 import { TemplateEngineLanguageGenerator } from './templateEngineLanguageGenerator';
 import { normalize } from 'path';
 import { ImportResolverDelegate } from '../../../botbuilder-lg/lib';
@@ -30,13 +30,12 @@ export class LanguageGeneratorManager {
         //this._multilanguageResources = MultiLanguageResourceLoader.load(resourceManager);
 
         // load all LG resources
-        this._resourceExporer.getResources("lg").then(
+        this._resourceExporer.getResources('lg').then(
             resourses => {resourses.forEach(
                 resourse => {
                     this._languageGenerator[resourse.id()] = this.getTemplateEngineLanguageGenerator(resourse);
                 }
             );
-        //this._resourceExporer.Changed += ResourceExplorer_Changed;
         }); 
     }
     

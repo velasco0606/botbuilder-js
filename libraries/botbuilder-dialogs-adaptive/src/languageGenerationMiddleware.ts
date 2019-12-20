@@ -1,6 +1,6 @@
 import { Middleware, TurnContext } from 'botbuilder-core';
 import { ResourceExplorer } from 'botbuilder-dialogs-declarative';
-import { LanguageGenerator } from './languageGenerator'
+import { LanguageGenerator } from './languageGenerator';
 import { ResourceMultiLanguageGenerator } from './generators/resourceMultiLanguageGenerator';
 import { TemplateEngineLanguageGenerator } from './generators';
 
@@ -12,7 +12,7 @@ import { TemplateEngineLanguageGenerator } from './generators';
  * Licensed under the MIT License.
  */
 
-export class LanguageGeneratorMiidleWare implements Middleware {
+export class LanguageGeneratorMiddleWare implements Middleware {
     private readonly _resourceExplorer: ResourceExplorer;
     private readonly _defaultLg: string;
     private _languageGenerator: LanguageGenerator;
