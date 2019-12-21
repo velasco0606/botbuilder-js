@@ -34,7 +34,6 @@ function getTurnContext(locale, generator) {
     return context;
 }
 
-
 describe('LGLanguageGenerator', function() {
     this.timeout(5000);
 
@@ -46,19 +45,19 @@ describe('LGLanguageGenerator', function() {
         let resource = await resourseExplorer.getResource('test.lg');
         let text = await resource.readText();
 
-        lg.languageGenerators.set('', new TemplateEngineLanguageGenerator(text, 'test.lg', multiLanguageResources));
+        //lg.languageGenerators.set('', new TemplateEngineLanguageGenerator(text, 'test.lg', multiLanguageResources));
 
-        resource = await resourseExplorer.getResource('test.de.lg');
-        text = await resource.readText();
-        lg.languageGenerators.set('de', new TemplateEngineLanguageGenerator(text, 'test.de.lg', multiLanguageResources));
+        // resource = await resourseExplorer.getResource('test.de.lg');
+        // text = await resource.readText();
+        // lg.languageGenerators.set('de', new TemplateEngineLanguageGenerator(text, 'test.de.lg', multiLanguageResources));
 
-        resource = await resourseExplorer.getResource('test.en.lg');
-        text = await resource.readText();
-        lg.languageGenerators.set('en', new TemplateEngineLanguageGenerator(text, 'test.en.lg', multiLanguageResources));
+        // resource = await resourseExplorer.getResource('test.en.lg');
+        // text = await resource.readText();
+        // lg.languageGenerators.set('en', new TemplateEngineLanguageGenerator(text, 'test.en.lg', multiLanguageResources));
 
-        resource = await resourseExplorer.getResource('test.en-US.lg');
-        text = await resource.readText();
-        lg.languageGenerators.set('en-us', new TemplateEngineLanguageGenerator(text, 'test.en-US.lg', multiLanguageResources));
+        // resource = await resourseExplorer.getResource('test.en-US.lg');
+        // text = await resource.readText();
+        // lg.languageGenerators.set('en-us', new TemplateEngineLanguageGenerator(text, 'test.en-US.lg', multiLanguageResources));
 
 
         resource = await resourseExplorer.getResource('test.en-GB.lg');
@@ -66,10 +65,10 @@ describe('LGLanguageGenerator', function() {
         lg.languageGenerators.set('en-GB', new TemplateEngineLanguageGenerator(text, 'test.en-GB.lg', multiLanguageResources));
 
 
-        resource = await resourseExplorer.getResource('test.fr.lg');
-        text = await resource.readText();
-        lg.languageGenerators.set('fr', new TemplateEngineLanguageGenerator(text, 'test.fr.lg', multiLanguageResources));
-
+        // resource = await resourseExplorer.getResource('test.fr.lg');
+        // text = await resource.readText();
+        // lg.languageGenerators.set('fr', new TemplateEngineLanguageGenerator(text, 'test.fr.lg', multiLanguageResources));
+        
         // const result1 = await lg.generate(getTurnContext('en-US'), '@{test()}', undefined);
         // assert.equal(result1, 'english-us');
 

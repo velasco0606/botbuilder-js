@@ -31,7 +31,6 @@ export abstract class MultiLanguageGeneratorBase implements LanguageGenerator{
             locales = this.languagePolicy[targetLocale];
         }
 
-        console.log(locales);
         const generators: LanguageGenerator[] = [];
         for (const locale of locales) {
             if (this.tryGetGenerator(turnContext, locale).exist) {

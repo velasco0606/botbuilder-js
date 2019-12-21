@@ -70,8 +70,6 @@ export class MultiLanguageResourceLoader {
     }
 
     public static fallbackLocale(locale: string, optionalLocales: string[]): string {
-        console.log('locale:' + locale);
-        console.log('opt:'+optionalLocales);
         if (optionalLocales === undefined) {
             throw new TypeError('Invalid Arguments');
         }
@@ -84,7 +82,7 @@ export class MultiLanguageResourceLoader {
         if (languagePolicy[locale] !== undefined) {
             const fallbackLocales = languagePolicy[locale];
             for (const i in fallbackLocales) {
-                const fallbackLocale = fallbackLocales[i]
+                const fallbackLocale = fallbackLocales[i];
                 if (optionalLocales.includes(fallbackLocale)) {
                     return fallbackLocale;
                 }

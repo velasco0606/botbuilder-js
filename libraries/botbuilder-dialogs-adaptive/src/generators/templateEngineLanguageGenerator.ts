@@ -12,7 +12,8 @@ import{ TemplateEngine } from '../../../botbuilder-lg/lib';
 import { IResource } from 'botbuilder-dialogs-declarative';
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGeneratorManager } from './languageGeneratorManager';
-import { normalize } from 'path';
+import { normalize, basename } from 'path';
+
 /**
  * LanguageGenerator implementation which uses TemplateEngine. 
  */
@@ -31,18 +32,24 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
         if (typeof lgTextOrFilePathOrEngine === 'string' && id !== undefined && resourceMapping !== undefined) {
             this.id = id !== undefined? id : this.DEFAULTLABEL;
             const {prefix: _, language: locale} = MultiLanguageResourceLoader.ParseLGFileName(id);
-            const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale, Array.from(resourceMapping.keys()));
+            //console.log(_+ ',' + locale);
+            const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(resourceMapping.keys()));
+            console.log('constructor.fallbackLocale:' + fallbackLocale);
             for (const mappingKey of resourceMapping.keys()) {
                 if (fallbackLocale === ''  || fallbackLocale === mappingKey) {
+                   // console.log('constructor.mappingKey.engine:'+mappingKey+'; content'+lgTextOrFilePathOrEngine);
                     const engine = new TemplateEngine().addText(lgTextOrFilePathOrEngine !== undefined? lgTextOrFilePathOrEngine : '', id, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
+                    //console.log('engine:'+ engine);
                     this.multiLangEngines.set(mappingKey, engine);
+                    //console.log('keys: ' + Array.from(this.multiLangEngines.keys()));
                 }
             }
-        } else if (typeof lgTextOrFilePathOrEngine === 'string' && resourceMapping !== undefined) {
+        } else if (typeof lgTextOrFilePathOrEngine === 'string'&& id === undefined && resourceMapping !== undefined) {
             const filePath = normalize(lgTextOrFilePathOrEngine);
-            this.id = id !== undefined? id : this.DEFAULTLABEL;
+            this.id = basename(filePath);
+
             const {prefix: _, language: locale} = MultiLanguageResourceLoader.ParseLGFileName(id);
-            const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale, Array.from(resourceMapping.keys()));
+            const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(resourceMapping.keys()));
             for (const mappingKey of resourceMapping.keys()) {
                 if (fallbackLocale === '' || fallbackLocale === mappingKey) {
                     const engine = new TemplateEngine().addFile(filePath, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
@@ -54,9 +61,12 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
         } else {
             this.engine = new TemplateEngine();
         }
+
+        console.log('constructor final keys: ' + Array.from(this.multiLangEngines.keys()));
     }
     
     public generate(turnContext: TurnContext, template: string, data: object): Promise<string> {
+        console.log('generate'+template);
         this.engine = this.initTemplateEngine(turnContext);
 
         try {
@@ -70,16 +80,18 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
 
     private initTemplateEngine(turnContext: TurnContext): TemplateEngine {
         const locale = turnContext.activity.locale? turnContext.activity.locale.toLocaleLowerCase() : '';
-        console.log("engine:"+locale);
         if (this.multiLangEngines.size > 0) {
-            console.log(Array.from(this.multiLangEngines.keys()));
-            const fallbackLocale = MultiLanguageResourceLoader.fallbackLocale(locale, Array.from(this.multiLangEngines.keys()));
-            console.log("fallbackLocale:"+fallbackLocale);
+            const fallbackLocale = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(this.multiLangEngines.keys()));
+            console.log('init.fallbackLocale:' + fallbackLocale);
+            console.log('init.keys:' +Array.from(this.multiLangEngines.keys()));
             this.engine = this.multiLangEngines.get(fallbackLocale);
+            //console.log("keys:" + Array.from(this.multiLangEngines.keys()));
+            //console.log("locale:" + locale + ";" + fallbackLocale);
+            //console.log("engine"  + this.engine);
         } else {
             this.engine = this.engine? this.engine : new TemplateEngine();
         }
-        
+
         return this.engine;
     }
 }
