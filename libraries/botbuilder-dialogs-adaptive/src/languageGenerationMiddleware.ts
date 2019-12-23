@@ -17,7 +17,7 @@ export class LanguageGeneratorMiddleWare implements Middleware {
     private readonly _defaultLg: string;
     private _languageGenerator: LanguageGenerator;
     private resourceExplorerKey = Symbol('resourceExplorer');
-    private languageGeneratorKey = Symbol('languageGenerator');
+    private languageGeneratorKey = Symbol('languageGeneratorManager');
 
     public constructor(resourceExpolrer: ResourceExplorer = undefined, defaultLg: string = undefined) {
         this._resourceExplorer = resourceExpolrer? resourceExpolrer : new ResourceExplorer();

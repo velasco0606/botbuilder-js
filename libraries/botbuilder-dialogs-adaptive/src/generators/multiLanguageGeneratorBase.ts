@@ -37,18 +37,25 @@ export abstract class MultiLanguageGeneratorBase implements LanguageGenerator{
                 generators.push(this.tryGetGenerator(turnContext, locale).result); 
             }
         }
-
+        console.log('generator.Length:' +generators.length);
         if (generators.length === 0) {
             throw Error(`No generator found for language ${ targetLocale }`);
         }
 
         const errors: string[] = [];
         for (const generator of generators) {
-            try {
-                return await generator.generate(turnContext, template, data);
-            } catch(e) {
-                errors.push(e);
+            //console.log(generator);
+            const result =  generator.generate(turnContext, template, data);
+            if (result !== undefined) {
+                return result
             }
+            else {
+                console.log('base error caught: no id');
+            }
+            // } catch(e) {
+            //     console.log('base error caught'+ e);
+            //     errors.push(e);
+            // }
         }
 
         throw Error(errors.join(',\n'));
