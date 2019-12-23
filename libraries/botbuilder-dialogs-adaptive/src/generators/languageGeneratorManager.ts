@@ -15,8 +15,7 @@ import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGenerator } from '../languageGenerator';
 import { TemplateEngineLanguageGenerator } from './templateEngineLanguageGenerator';
 import { normalize } from 'path';
-import { ImportResolverDelegate } from '../../../botbuilder-lg/lib';
-import { throws } from 'assert';
+import { ImportResolverDelegate } from 'botbuilder-lg';
 
 export class LanguageGeneratorManager {
     private _resourceExporer: ResourceExplorer;
@@ -29,16 +28,15 @@ export class LanguageGeneratorManager {
     public constructor(resourceManager: ResourceExplorer) {
         this._resourceExporer = resourceManager;
         //this._multilanguageResources = MultiLanguageResourceLoader.load(resourceManager);
+
     }
     // load all LG resources
-    public async loadResources(){
+    public async loadResources(): Promise<void> {
         const resources = await this._resourceExporer.getResources('lg');
-         for (const resource of resources) {
-            console.log(resource.id());
+        for (const resource of resources) {
             const generator = await this.getTemplateEngineLanguageGenerator(resource);
-            this._languageGenerator.set(resource.id(), generator);
+            this._languageGenerator.set(resource.id().toLocaleLowerCase(), generator);
         }
-        return this._languageGenerator;
     }
     
     public _languageGenerator: Map<string, LanguageGenerator> = new Map<string, LanguageGenerator>();

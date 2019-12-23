@@ -2,7 +2,7 @@ import { Middleware, TurnContext } from 'botbuilder-core';
 import { ResourceExplorer } from 'botbuilder-dialogs-declarative';
 import { LanguageGenerator } from './languageGenerator';
 import { ResourceMultiLanguageGenerator } from './generators/resourceMultiLanguageGenerator';
-import { TemplateEngineLanguageGenerator } from './generators';
+import { TemplateEngineLanguageGenerator, LanguageGeneratorManager } from './generators';
 
 /**
  * @module botbuilder-dialogs-adaptive
@@ -16,8 +16,8 @@ export class LanguageGeneratorMiddleWare implements Middleware {
     private readonly _resourceExplorer: ResourceExplorer;
     private readonly _defaultLg: string;
     private _languageGenerator: LanguageGenerator;
-    private resourceExplorerKey = Symbol('resourceExplorer');
-    private languageGeneratorKey = Symbol('languageGeneratorManager');
+    private languageGeneratorManagerKey = 'LanguageGeneratorManager';
+    private languageGeneratorKey = 'LanguageGenerator';
 
     public constructor(resourceExpolrer: ResourceExplorer = undefined, defaultLg: string = undefined) {
         this._resourceExplorer = resourceExpolrer? resourceExpolrer : new ResourceExplorer();
@@ -44,8 +44,10 @@ export class LanguageGeneratorMiddleWare implements Middleware {
         }
 
         // miss LanguageGenerationComponentRegistration
-        
-        context.turnState.set(this.resourceExplorerKey, this._resourceExplorer);
+        const lgm = await new LanguageGeneratorManager(this._resourceExplorer);
+        await lgm.loadResources();
+        context.turnState.set(this.languageGeneratorManagerKey, lgm);
+
         if (this._languageGenerator === undefined) {
             throw new Error('no language generator defined');
         } else{

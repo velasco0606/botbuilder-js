@@ -8,7 +8,7 @@
 
 import { LanguageGenerator } from '../languageGenerator';
 import { TurnContext } from 'botbuilder-core';
-import{ TemplateEngine } from '../../../botbuilder-lg/lib';
+import{ TemplateEngine } from 'botbuilder-lg';
 import { IResource } from 'botbuilder-dialogs-declarative';
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGeneratorManager } from './languageGeneratorManager';
@@ -32,16 +32,11 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
         if (typeof lgTextOrFilePathOrEngine === 'string' && id !== undefined && resourceMapping !== undefined) {
             this.id = id !== undefined? id : this.DEFAULTLABEL;
             const {prefix: _, language: locale} = MultiLanguageResourceLoader.ParseLGFileName(id);
-            //console.log(_+ ',' + locale);
             const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(resourceMapping.keys()));
-            //console.log('constructor.fallbackLocale:' + fallbackLocale);
             for (const mappingKey of resourceMapping.keys()) {
                 if (fallbackLocale === ''  || fallbackLocale === mappingKey) {
-                   // console.log('constructor.mappingKey.engine:'+mappingKey+'; content'+lgTextOrFilePathOrEngine);
                     const engine = new TemplateEngine().addText(lgTextOrFilePathOrEngine !== undefined? lgTextOrFilePathOrEngine : '', id, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
-                    //console.log('engine:'+ engine);
                     this.multiLangEngines.set(mappingKey, engine);
-                    //console.log('keys: ' + Array.from(this.multiLangEngines.keys()));
                 }
             }
         } else if (typeof lgTextOrFilePathOrEngine === 'string'&& id === undefined && resourceMapping !== undefined) {
@@ -61,21 +56,19 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
         } else {
             this.engine = new TemplateEngine();
         }
-
-        //console.log('constructor final keys: ' + Array.from(this.multiLangEngines.keys()));
     }
     
     public generate(turnContext: TurnContext, template: string, data: object): Promise<string> {
-        //console.log('generate'+template);
         this.engine = this.initTemplateEngine(turnContext);
 
         try {
             return Promise.resolve(this.engine.evaluate(template, data).toString());
         } catch(e) {
-            console.log('error caught!'+ e);
             if (this.id !== undefined && this.id === '') {
-                return Promise.reject(`${ this.id }:${ e }`);
+                throw Error(`${ this.id }:${ e }`);
             }
+
+            throw Error(e);
         }
     }
 

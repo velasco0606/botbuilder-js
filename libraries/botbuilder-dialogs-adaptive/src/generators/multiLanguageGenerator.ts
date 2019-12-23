@@ -23,11 +23,7 @@ export class MultiLanguageGenerator extends MultiLanguageGeneratorBase{
     }
 
     public tryGetGenerator(context: TurnContext, locale: string):  {exist: boolean; result: LanguageGenerator} {
-        //console.log(this.languageGenerators);
-        //console.log(locale);
         if (this.languageGenerators.has(locale)) {
-            //console.log("true");
-            //console.log(this.languageGenerators.get(locale));
             return {exist: true, result: this.languageGenerators.get(locale)};
         } else {
             return {exist: false, result: undefined}; 
