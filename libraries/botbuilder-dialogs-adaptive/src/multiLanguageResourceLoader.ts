@@ -21,8 +21,8 @@ export class MultiLanguageResourceLoader {
             const existNames = new Set<string>();
             for (const index in suffixs) {
                 const suffix = suffixs[index];
-                if ((locale === undefined || locale ==='') || (suffix !== undefined && suffix !== '')) {
-                    const resourcesWithSuffix = allResouces.filter(u => this.ParseLGFileName(u.id()).language === suffix);
+                if (!locale || !suffix ) {
+                    const resourcesWithSuffix = allResouces.filter(u => this.parseLGFileName(u.id()).language === suffix);
                     resourcesWithSuffix.forEach(u => {
                         const resourceName = u.id();
                         const length = (suffix !== undefined && suffix !== '')? 3 : 4;
@@ -38,7 +38,7 @@ export class MultiLanguageResourceLoader {
                     });
                 } else {
                     if (resourceMapping.has(locale)) {
-                        const resourcesWithEmptySuffix = allResouces.filter(u => this.ParseLGFileName(u.id()).language === '');
+                        const resourcesWithEmptySuffix = allResouces.filter(u => this.parseLGFileName(u.id()).language === '');
                         resourcesWithEmptySuffix.forEach(u => {
                             const resourceName = u.id();
                             const prefixName = resourceName.substring(0, resourceName.length - 3);
@@ -55,7 +55,7 @@ export class MultiLanguageResourceLoader {
         return this.fallbackMultiLangResource(resourceMapping);
     }
 
-    public static ParseLGFileName(lgFileName: string): LgFileParsedResult {
+    public static parseLGFileName(lgFileName: string):  {prefix: string, language: string} {
         if (lgFileName === undefined || !lgFileName.endsWith('.lg')) {
             return {prefix: lgFileName, language: ''};
         }
@@ -156,8 +156,3 @@ export class MultiLanguageResourceLoader {
         return true;
     }
 }
-
-interface LgFileParsedResult  {
-    prefix: string;
-    language: string;
-} 

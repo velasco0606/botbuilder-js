@@ -12,7 +12,6 @@ import{ TemplateEngine } from 'botbuilder-lg';
 import { IResource } from 'botbuilder-dialogs-declarative';
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGeneratorManager } from './languageGeneratorManager';
-import { normalize, basename } from 'path';
 
 /**
  * LanguageGenerator implementation which uses TemplateEngine. 
@@ -28,31 +27,19 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
 
     public id: string = '';
 
-    public constructor(lgTextOrFilePathOrEngine?: string | TemplateEngine, id?: string, resourceMapping?: Map<string,IResource[]>) {
-        if (typeof lgTextOrFilePathOrEngine === 'string' && id !== undefined && resourceMapping !== undefined) {
+    public constructor(lgText?: string | TemplateEngine, id?: string, resourceMapping?: Map<string,IResource[]>) {
+        if (typeof lgText === 'string' && id !== undefined && resourceMapping !== undefined) {
             this.id = id !== undefined? id : this.DEFAULTLABEL;
-            const {prefix: _, language: locale} = MultiLanguageResourceLoader.ParseLGFileName(id);
+            const {prefix: _, language: locale} = MultiLanguageResourceLoader.parseLGFileName(id);
             const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(resourceMapping.keys()));
             for (const mappingKey of resourceMapping.keys()) {
                 if (fallbackLocale === ''  || fallbackLocale === mappingKey) {
-                    const engine = new TemplateEngine().addText(lgTextOrFilePathOrEngine !== undefined? lgTextOrFilePathOrEngine : '', id, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
+                    const engine = new TemplateEngine().addText(lgText !== undefined? lgText : '', id, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
                     this.multiLangEngines.set(mappingKey, engine);
                 }
             }
-        } else if (typeof lgTextOrFilePathOrEngine === 'string'&& id === undefined && resourceMapping !== undefined) {
-            const filePath = normalize(lgTextOrFilePathOrEngine);
-            this.id = basename(filePath);
-
-            const {prefix: _, language: locale} = MultiLanguageResourceLoader.ParseLGFileName(id);
-            const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(resourceMapping.keys()));
-            for (const mappingKey of resourceMapping.keys()) {
-                if (fallbackLocale === '' || fallbackLocale === mappingKey) {
-                    const engine = new TemplateEngine().addFile(filePath, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
-                    this.multiLangEngines.set(mappingKey, engine);
-                }
-            }
-        } else if (lgTextOrFilePathOrEngine instanceof TemplateEngine) {
-            this.engine = lgTextOrFilePathOrEngine;
+        } else if (lgText instanceof TemplateEngine) {
+            this.engine = lgText;
         } else {
             this.engine = new TemplateEngine();
         }

@@ -48,7 +48,7 @@ export class LanguageGeneratorManager {
 
             const resourceName = normalize(id);
             const resource:IResource = resources.filter(u => {
-                MultiLanguageResourceLoader.ParseLGFileName(u.id()).prefix.toLowerCase() === MultiLanguageResourceLoader.ParseLGFileName(resourceName).prefix.toLowerCase();
+                MultiLanguageResourceLoader.parseLGFileName(u.id()).prefix.toLowerCase() === MultiLanguageResourceLoader.parseLGFileName(resourceName).prefix.toLowerCase();
             })[0];
 
             if (resource === undefined) {
