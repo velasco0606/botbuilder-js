@@ -8,7 +8,6 @@
 
 import { IResource } from "./resource";
 
-const path = require('path');
 const fs = require('fs');
 
 export class FileResource implements IResource {
@@ -34,12 +33,8 @@ export class FileResource implements IResource {
         return this.resourceId;
     }
 
-    public readText() : Promise<string> {
+    public readText(): string {
         const filePath = this.path;
-        return new Promise<string>(function(resolve, reject) {
-            fs.readFile(filePath, 'utf8', (err, data) => {
-                err ? reject(err) : resolve(data)
-            });
-        });
+        return fs.readFileSync(filePath, 'utf8');
     }
 }

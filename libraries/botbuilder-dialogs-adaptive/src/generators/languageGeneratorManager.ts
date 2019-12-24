@@ -41,25 +41,22 @@ export class LanguageGeneratorManager {
     public _languageGenerator: Map<string, LanguageGenerator> = new Map<string, LanguageGenerator>();
 
     public static resourceExplorerResolver(locale: string, resourceMapping: Map<string, IResource[]>): ImportResolverDelegate {
-        return (source: string, id: string) => {
+        return  (source: string, id: string): {content: string; id: string} => {
             const fallbaclLocale = MultiLanguageResourceLoader.fallbackLocale(locale, Array.from(resourceMapping.keys()));
             const resources: IResource[] = resourceMapping[fallbaclLocale];
 
             const resourceName = basename(normalize(id));
-            const resource:IResource = resources.filter(u => {
+            const resource: IResource = resources.filter((u): void => {
                 MultiLanguageResourceLoader.parseLGFileName(u.id()).prefix.toLowerCase() === MultiLanguageResourceLoader.parseLGFileName(resourceName).prefix.toLowerCase();
             })[0];
 
             if (resource === undefined) {
-                return {content:"", id: resource.id()};
+                return {content: '', id: resource.id()};
             } else {
-                resource.readText().then(
-                    text => {
-                        return {content: text, id: resource.id()};
-                    }
-                );
+                const text = resource.readText();
+                return {content: text, id: resource.id()};
             }
-        }
+        };
     }
 
     // private  ResourceExplorer_Changed(resources: IResource[]): void {
