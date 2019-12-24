@@ -37,7 +37,7 @@ async function getTurnContext(locale, generator) {
 }
 
 describe('LGLanguageGenerator', function() {
-    this.timeout(100000);
+    this.timeout(30000);
 
     it('TestMultiLangGenerator', async function() {
         const lg = new MultiLanguageGenerator();
