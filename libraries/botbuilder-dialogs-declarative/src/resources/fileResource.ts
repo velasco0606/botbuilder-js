@@ -6,7 +6,6 @@
  * Licensed under the MIT License.
  */
 
-import { debug } from "util";
 import { IResource } from "./resource";
 
 const path = require('path');
@@ -27,6 +26,9 @@ export class FileResource implements IResource {
         // The id will be the file name, without the path
         this.resourceId = this.path.replace(/^.*[\\\/]/, '');
     }
+
+    public get fullName(): string {return this.path;}; 
+
 
     public id(): string {
         return this.resourceId;
