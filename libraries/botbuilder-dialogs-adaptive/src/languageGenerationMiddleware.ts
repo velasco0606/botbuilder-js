@@ -30,7 +30,7 @@ export class LanguageGeneratorMiddleWare implements Middleware {
      * @param next The delegate to call to continue the bot middleware pipeline
      */
     public async onTurn(context: TurnContext, next: () => Promise<void>): Promise<void> {
-        if (context === null) {
+        if (context === undefined) {
             throw new Error('context is null');
         }
 
@@ -44,7 +44,7 @@ export class LanguageGeneratorMiddleWare implements Middleware {
         }
 
         // miss LanguageGenerationComponentRegistration
-        const lgm = await new LanguageGeneratorManager(this._resourceExplorer);
+        const lgm = new LanguageGeneratorManager(this._resourceExplorer);
         await lgm.loadResources();
         context.turnState.set(this.languageGeneratorManagerKey, lgm);
 
@@ -54,7 +54,7 @@ export class LanguageGeneratorMiddleWare implements Middleware {
             context.turnState.set(this.languageGeneratorKey, this._languageGenerator);
         }
         
-        if (next !== null) {
+        if (!next) {
             await next();
         }
     }

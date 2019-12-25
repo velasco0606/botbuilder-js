@@ -12,6 +12,7 @@ import{ TemplateEngine } from 'botbuilder-lg';
 import { IResource } from 'botbuilder-dialogs-declarative';
 import { MultiLanguageResourceLoader } from '../multiLanguageResourceLoader';
 import { LanguageGeneratorManager } from './languageGeneratorManager';
+import { normalize, basename } from 'path';
 
 /**
  * LanguageGenerator implementation which uses TemplateEngine. 
@@ -19,7 +20,7 @@ import { LanguageGeneratorManager } from './languageGeneratorManager';
 export class TemplateEngineLanguageGenerator implements LanguageGenerator{
     public declarative: string = 'Microsoft.TemplateEngMineLanguageGenerator';
     
-    private  DEFAULTLABEL: string  = 'Unknown';
+    private readonly DEFAULTLABEL: string  = 'Unknown';
 
     private readonly multiLangEngines: Map<string, TemplateEngine> = new Map<string, TemplateEngine>();
 
@@ -27,27 +28,45 @@ export class TemplateEngineLanguageGenerator implements LanguageGenerator{
 
     public id: string = '';
 
-    public constructor(lgText?: string | TemplateEngine, id?: string, resourceMapping?: Map<string,IResource[]>) {
-        if (typeof lgText === 'string' && id !== undefined && resourceMapping !== undefined) {
-            this.id = id !== undefined? id : this.DEFAULTLABEL;
-            const {prefix: _, language: locale} = MultiLanguageResourceLoader.parseLGFileName(id);
-            const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(resourceMapping.keys()));
-            for (const mappingKey of resourceMapping.keys()) {
-                if (fallbackLocale === ''  || fallbackLocale === mappingKey) {
-                    const engine = new TemplateEngine().addText(lgText !== undefined? lgText : '', id, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
-                    this.multiLangEngines.set(mappingKey, engine);
-                }
-            }
-        } else if (lgText instanceof TemplateEngine) {
-            this.engine = lgText;
+    public constructor(templateEngine?: TemplateEngine) {
+        if (templateEngine !== undefined) {
+            this.engine = templateEngine;
         } else {
             this.engine = new TemplateEngine();
         }
     }
+
+    public addTemplateEngineFromText(lgText: string, id: string, resourceMapping: Map<string,IResource[]>): TemplateEngineLanguageGenerator {
+        this.id = id !== undefined? id : this.DEFAULTLABEL;
+        const {prefix: _, language: locale} = MultiLanguageResourceLoader.parseLGFileName(id);
+        const fallbackLocale: string = MultiLanguageResourceLoader.fallbackLocale(locale.toLocaleLowerCase(), Array.from(resourceMapping.keys()));
+        for (const mappingKey of resourceMapping.keys()) {
+            if (fallbackLocale === ''  || fallbackLocale === mappingKey) {
+                const engine = new TemplateEngine().addText(lgText !== undefined? lgText : '', id, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
+                this.multiLangEngines.set(mappingKey, engine);
+            }
+        }
+
+        return this;
+    }
+
+    public addTemplateEngineFromFile(filePath: string, resourceMapping: Map<string,IResource[]>): TemplateEngineLanguageGenerator {
+        filePath = normalize(filePath);
+        this.id = basename(filePath);
+        const {prefix: _, language: locale} = MultiLanguageResourceLoader.parseLGFileName(this.id);
+        const fallbackLocale = MultiLanguageResourceLoader.fallbackLocale(locale, Array.from(resourceMapping.keys()));
+        for (const mappingKey of resourceMapping.keys()) {
+            if (fallbackLocale === ''  || fallbackLocale === mappingKey) {
+                const engine = new TemplateEngine().addFile(filePath, LanguageGeneratorManager.resourceExplorerResolver(mappingKey, resourceMapping));
+                this.multiLangEngines.set(mappingKey, engine);
+            }
+        }
+
+        return this;
+    }
     
     public generate(turnContext: TurnContext, template: string, data: object): Promise<string> {
         this.engine = this.initTemplateEngine(turnContext);
-
         try {
             return Promise.resolve(this.engine.evaluate(template, data).toString());
         } catch(e) {
