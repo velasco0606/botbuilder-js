@@ -22,8 +22,8 @@ export class MultiLanguageResourceLoader {
             for (const index in suffixs) {
                 const suffix = suffixs[index];
                 if (!locale || !suffix ) {
-                    const resourcesWithSuffix = allResouces.filter(u => this.parseLGFileName(u.id()).language === suffix);
-                    resourcesWithSuffix.forEach(u => {
+                    const resourcesWithSuffix = allResouces.filter((u): boolean => this.parseLGFileName(u.id()).language === suffix);
+                    resourcesWithSuffix.forEach((u): void => {
                         const resourceName = u.id();
                         const length = (suffix !== undefined && suffix !== '')? 3 : 4;
                         const prefixName = resourceName.substring(0, resourceName.length - suffix.length - length);
@@ -38,8 +38,8 @@ export class MultiLanguageResourceLoader {
                     });
                 } else {
                     if (resourceMapping.has(locale)) {
-                        const resourcesWithEmptySuffix = allResouces.filter(u => this.parseLGFileName(u.id()).language === '');
-                        resourcesWithEmptySuffix.forEach(u => {
+                        const resourcesWithEmptySuffix = allResouces.filter((u): boolean => this.parseLGFileName(u.id()).language === '');
+                        resourcesWithEmptySuffix.forEach((u): void => {
                             const resourceName = u.id();
                             const prefixName = resourceName.substring(0, resourceName.length - 3);
                             if (!existNames.has(prefixName)) {
@@ -55,7 +55,7 @@ export class MultiLanguageResourceLoader {
         return this.fallbackMultiLangResource(resourceMapping);
     }
 
-    public static parseLGFileName(lgFileName: string):  {prefix: string, language: string} {
+    public static parseLGFileName(lgFileName: string):  {prefix: string; language: string} {
         if (lgFileName === undefined || !lgFileName.endsWith('.lg')) {
             return {prefix: lgFileName, language: ''};
         }
@@ -63,7 +63,7 @@ export class MultiLanguageResourceLoader {
         const fileName = lgFileName.substring(0, lgFileName.length - '.lg'.length);
         const lastDot = fileName.lastIndexOf('.');
         if (lastDot > 0) {
-            return {prefix: fileName.substring(0, lastDot), language: fileName.substring(lastDot + 1)}
+            return {prefix: fileName.substring(0, lastDot), language: fileName.substring(lastDot + 1)};
         } else {
             return {prefix: fileName, language: ''};
         }
@@ -98,7 +98,7 @@ export class MultiLanguageResourceLoader {
         const resourcePoolDict = new Map<string, IResource[]>();
         for (const currentLocale of resourceMapping.keys()) {
             const currentResourcePool: IResource[] = resourceMapping[currentLocale];
-            const existLocale  = Object.keys(resourcePoolDict).filter(u => this.hasSameResourcePool(resourcePoolDict[u], currentResourcePool))[0];
+            const existLocale  = Object.keys(resourcePoolDict).filter((u): boolean => this.hasSameResourcePool(resourcePoolDict[u], currentResourcePool))[0];
             if (existLocale === undefined) {
                 resourcePoolDict.set(currentLocale, currentResourcePool);
             } else {
