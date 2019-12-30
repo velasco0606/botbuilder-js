@@ -1,17 +1,17 @@
-import { TypeFactory, TypeLoader, ResourceExplorer } from "botbuilder-dialogs-declarative";
-import { AdaptiveComponentRegistration } from "../adaptiveComponentRegistration";
-import { AdaptiveTestComponentRegistration } from "../adaptiveTestComponentRegistration";
-import { TestScript } from "./testScript";
+import { TypeFactory, TypeLoader, ResourceExplorer } from 'botbuilder-dialogs-declarative';
+import { AdaptiveComponentRegistration } from '../adaptiveComponentRegistration';
+import { AdaptiveTestComponentRegistration } from '../adaptiveTestComponentRegistration';
+import { TestScript } from './testScript';
 import * as fs from 'fs';
 import * as path from 'path';
 
 export class TestRunner {
     private typeLoader: TypeLoader;
 
-    constructor(private resourcePath: string) {
+    public constructor(private resourcePath: string) {
         const typeFactory = new TypeFactory();
         const resourceExplorer = new ResourceExplorer();
-        resourceExplorer.addFolder(this.resourcePath);
+        resourceExplorer.addFolder(this.resourcePath, true, false);
 
         this.typeLoader = new TypeLoader(typeFactory, resourceExplorer);
         this.typeLoader.addComponent(new AdaptiveComponentRegistration());
