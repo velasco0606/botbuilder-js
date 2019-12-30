@@ -10,6 +10,7 @@
  * Base class for all configurable classes.
  */
 export abstract class Configurable {
+    public path: string;
     /**
      * Fluent method for configuring the object.
      * @param config Configuration settings to apply.

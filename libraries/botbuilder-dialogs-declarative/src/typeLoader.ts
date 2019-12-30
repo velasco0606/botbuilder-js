@@ -9,7 +9,7 @@
 import { TypeFactory } from './factory/typeFactory';
 import { ComponentRegistration } from './componentRegistration';
 import { ResourceExplorer } from './resources/resourceExplorer';
-import { PathInterface } from 'botbuilder-dialogs';
+import { Dialog, Configurable } from 'botbuilder-dialogs';
 
 export class TypeLoader {
 
@@ -41,10 +41,11 @@ export class TypeLoader {
         return await this.loadObjectTree(jsonObj);
     }
 
-    private async loadObjectTree(obj: object): Promise<object> {
+    private async loadObjectTree(obj: object, path: string = 'root'): Promise<object> {
         if (Array.isArray(obj)) {
             for (let i = 0; i < obj.length; i++) {
-                obj[i] = await this.loadObjectTree(obj[i]);
+                const childPath = `${ path }[${ i }]`;
+                obj[i] = await this.loadObjectTree(obj[i], childPath);
             }
         } else if (typeof obj == 'object') {
             const type = obj['$kind'] || obj['$type'];
@@ -53,16 +54,20 @@ export class TypeLoader {
             }
             for (const key in obj) {
                 if (key != '$kind' && key != '$type') {
+                    const childPath = `${ path }.${ key }`;
                     if (key == 'dialog' && typeof obj[key] == 'string' && this.resourceExplorer) {
                         const resource = await this.resourceExplorer.getResource(`${ obj[key] }.dialog`);
                         if (resource) {
                             const text = await resource.readText();
-                            obj[key] = await this.loadObjectTree(JSON.parse(text));
+                            obj[key] = await this.loadObjectTree(JSON.parse(text), childPath);
                         }
                     } else {
-                        obj[key] = await this.loadObjectTree(obj[key]);
+                        obj[key] = await this.loadObjectTree(obj[key], childPath);
                     }
                 }
+            }
+            if (obj instanceof Configurable) {
+                (obj as Configurable).path = path;
             }
         }
         return obj;

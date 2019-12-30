@@ -11,8 +11,7 @@ import {
 } from 'botbuilder-core';
 import {
     Dialog, DialogInstance, DialogReason, DialogTurnResult, DialogTurnStatus, DialogEvent,
-    DialogContext, DialogConfiguration, DialogContainer, DialogDependencies, PathInterface
-} from 'botbuilder-dialogs';
+    DialogContext, DialogConfiguration, DialogContainer, DialogDependencies, Configurable} from 'botbuilder-dialogs';
 import {
     AdaptiveEventNames, SequenceContext, AdaptiveDialogState, ActionState
 } from './sequenceContext';
@@ -20,6 +19,7 @@ import { OnCondition } from './conditions';
 import { Recognizer } from './recognizers';
 import { TriggerSelector } from './triggerSelector';
 import { FirstSelector } from './selectors';
+import { AdaptiveFootprintTracker } from './adaptiveFootprintTracker';
 
 export interface AdaptiveDialogConfiguration extends DialogConfiguration {
     /**
@@ -371,7 +371,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
             const evt = this.triggers[selection[0]];
             const changes = await evt.execute(sequenceContext);
             if (changes && changes.length > 0) {
-                console.log(`Activate path: ${evt.path}`);
+                AdaptiveFootprintTracker.reportConditionPath(evt.path);
                 sequenceContext.queueChanges(changes[0]);
                 return true;
             }
@@ -402,7 +402,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
             const dialogId = action.actions[0].dialogId;
             const dialog = action.findDialog(dialogId);
             if (dialog) {
-                console.log(`Activate path: ${dialog.path}`);
+                AdaptiveFootprintTracker.reportActionPath(dialog.path);
             }
             let result = await action.continueDialog();
 

@@ -18,4 +18,3 @@ export * from './dialogManager';
 export * from './dialogSet';
 export * from './waterfallDialog';
 export * from './waterfallStepContext';
-export * from './path';

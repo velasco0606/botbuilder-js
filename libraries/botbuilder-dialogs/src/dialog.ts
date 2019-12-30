@@ -8,7 +8,6 @@
 import { BotTelemetryClient, NullTelemetryClient, TurnContext } from 'botbuilder-core';
 import { DialogContext } from './dialogContext';
 import { Configurable } from './configurable';
-import { PathInterface } from './path';
 
 /**
  * Tracking information persisted for an instance of a dialog on the stack.
@@ -188,9 +187,7 @@ export interface DialogEvent {
 /**
  * Base class for all dialogs.
  */
-export abstract class Dialog<O extends object = {}> extends Configurable implements PathInterface {
-    public path: string;
-
+export abstract class Dialog<O extends object = {}> extends Configurable {
     private _id: string;
 
     /**

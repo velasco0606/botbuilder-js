@@ -5,7 +5,7 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { Dialog, DialogDependencies, Configurable, PathInterface } from 'botbuilder-dialogs';
+import { Dialog, DialogDependencies, Configurable } from 'botbuilder-dialogs';
 import { Expression, ExpressionParserInterface, ExpressionType, Constant, ExpressionEngine } from 'botframework-expressions';
 import { SequenceContext, ActionChangeList, ActionState, ActionChangeType } from '../sequenceContext';
 
@@ -14,7 +14,7 @@ export interface OnConditionConfiguration {
     actions?: Dialog[];
 }
 
-export class OnCondition extends Configurable implements DialogDependencies, PathInterface {
+export class OnCondition extends Configurable implements DialogDependencies {
     
     public static declarativeType = 'Microsoft.OnCondition';
 
