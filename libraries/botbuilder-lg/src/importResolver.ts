@@ -9,16 +9,18 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
 /**
  * Delegate for resolving resource id of imported lg file.
  */
-export declare type ImportResolverDelegate = (source: string, resourceId: string) => { content: string; id: string };
-
+export interface ImportResolverDelegate {
+    (source: string, resourceId: string): { content: string; id: string };
+}
 /**
  * import resolver util
  */
 export class ImportResolver {
-    public static fileResolver: ImportResolverDelegate = (filePath: string, id: string): any => {
+    public static fileResolver: ImportResolverDelegate = (filePath: string, id: string): { content: string; id: string } => {
         // import paths are in resource files which can be executed on multiple OS environments
         // Call GetOsPath() to map / & \ in importPath -> OSPath
         let importPath: string = ImportResolver.normalizePath(id);
