@@ -5,11 +5,12 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogConfiguration, Dialog, DialogContext, DialogTurnResult, DialogEvent, DialogReason, Choice, ListStyle, ChoiceFactoryOptions, ChoiceFactory, DialogEvents } from "botbuilder-dialogs";
-import { ActivityTypes, Activity, InputHints, MessageFactory } from "botbuilder-core";
-import { ActivityProperty } from "../activityProperty";
-import { ExpressionPropertyValue, ExpressionProperty } from "../expressionProperty";
-import { AdaptiveEventNames } from "../sequenceContext";
+import { DialogConfiguration, Dialog, DialogContext, DialogTurnResult, DialogEvent, DialogReason, Choice, ListStyle, ChoiceFactoryOptions, ChoiceFactory, DialogEvents } from 'botbuilder-dialogs';
+import { ActivityTypes, Activity, InputHints, MessageFactory } from 'botbuilder-core';
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
+import { AdaptiveEventNames } from '../sequenceContext';
+import { Template } from '../template';
+import { TextTemplate } from '../templates/textTemplate';
 
 export type PromptType = string | Partial<Activity>;
 
@@ -48,11 +49,11 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
 
     public value?: ExpressionProperty<any>;
 
-    public prompt = new ActivityProperty();
+    public prompt: Template;
 
-    public unrecognizedPrompt = new ActivityProperty();
+    public unrecognizedPrompt: Template;
 
-    public invalidPrompt = new ActivityProperty();
+    public invalidPrompt: Template;
 
     public readonly validations: ExpressionProperty<boolean>[] = [];
 
@@ -60,14 +61,6 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
 
     public defaultValue?: ExpressionProperty<any>;
 
-    constructor() {
-        super();
-
-        // Initialize input hints
-        this.prompt.inputHint = InputHints.ExpectingInput;
-        this.unrecognizedPrompt.inputHint = InputHints.ExpectingInput;
-        this.invalidPrompt.inputHint = InputHints.ExpectingInput;
-    }
 
     /**
      * (Optional) data binds the called dialogs input & output to the given property.
@@ -95,7 +88,7 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
         if (state == InputState.valid) {
             // Return input
             const value = dc.state.getValue(InputDialog.VALUE_PROPERTY).value;
-            if (this.property) { dc.state.setValue(this.property, value) }
+            if (this.property) { dc.state.setValue(this.property, value); }
             return await dc.endDialog(value);
         } else {
             // Prompt user
@@ -126,7 +119,7 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
         if (state == InputState.valid) {
             // Return input
             const value = dc.state.getValue(InputDialog.VALUE_PROPERTY).value;
-            if (this.property) { dc.state.setValue(this.property, value) }
+            if (this.property) { dc.state.setValue(this.property, value); }
             return await dc.endDialog(value);
         } else if (this.maxTurnCount == undefined || turnCount < this.maxTurnCount) {
             // Prompt user
@@ -154,13 +147,13 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
                 const value = config[key];
                 switch (key) {
                     case 'prompt':
-                        this.prompt.value = value;
+                        this.prompt = new TextTemplate(value);
                         break;
                     case 'unrecognizedPrompt':
-                        this.unrecognizedPrompt.value = value;
+                        this.unrecognizedPrompt = new TextTemplate(value);
                         break;
                     case 'invalidPrompt':
-                        this.invalidPrompt.value = value;
+                        this.invalidPrompt = new TextTemplate(value);
                         break;
                     case 'validations':
                         (value as any[]).forEach((exp) => this.validations.push(new ExpressionProperty(exp)));
@@ -184,7 +177,7 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
             if (dc.parent) {
                 dc.parent.emitEvent(AdaptiveEventNames.recognizeUtterance, dc.context.activity, false);
             }
-            let canInterrupt: boolean = true;
+            let canInterrupt = true;
             if (this.allowInterruptions) {
                 const { value, error } = this.allowInterruptions.evaluate(this.id, dc.state);
                 canInterrupt = error === null && value !== null && value as boolean;
@@ -201,25 +194,25 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
         return Object.assign({}, options);
     }
 
-    protected onRenderPrompt(dc: DialogContext, state: InputState): Partial<Activity> {
+    protected async onRenderPrompt(dc: DialogContext, state: InputState):  Promise<Partial<Activity>> {
         switch (state) {
             case InputState.unrecognized:
-                if (this.unrecognizedPrompt.hasValue) {
-                    return this.unrecognizedPrompt.format(dc);
-                } else if (this.invalidPrompt.hasValue) {
-                    return this.invalidPrompt.format(dc);
+                if (this.unrecognizedPrompt) {
+                    return await this.unrecognizedPrompt.bindToData(dc.context, dc.state);
+                } else if (this.invalidPrompt) {
+                    return await this.invalidPrompt.bindToData(dc.context, dc.state);
                 }
                 break;
             case InputState.invalid:
-                if (this.invalidPrompt.hasValue) {
-                    return this.invalidPrompt.format(dc);
-                } else if (this.unrecognizedPrompt.hasValue) {
-                    return this.unrecognizedPrompt.format(dc);
+                if (this.invalidPrompt) {
+                    return await this.invalidPrompt.bindToData(dc.context, dc.state);
+                } else if (this.unrecognizedPrompt) {
+                    return await this.unrecognizedPrompt.bindToData(dc.context, dc.state);
                 }
                 break;
         }
 
-        return this.prompt.format(dc);
+        return await this.prompt.bindToData(dc.context, dc.state);
     }
 
     protected getDefaultInput(dc: DialogContext): any {
@@ -332,7 +325,7 @@ export abstract class InputDialog<O extends InputDialogOptions> extends Dialog<O
     }
 
     private async promptUser(dc: DialogContext, state: InputState): Promise<DialogTurnResult> {
-        const prompt = this.onRenderPrompt(dc, state);
+        const prompt = await this.onRenderPrompt(dc, state);
         await dc.context.sendActivity(prompt);
         return Dialog.EndOfTurn;
     }

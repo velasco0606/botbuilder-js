@@ -5,10 +5,11 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from "./inputDialog";
-import { DialogContext, Choice, ListStyle, ChoiceFactoryOptions, FindChoicesOptions, ChoiceFactory, recognizeChoices, ModelResult, FoundChoice } from "botbuilder-dialogs";
-import { Activity } from "botbuilder-core";
-import { ExpressionPropertyValue, ExpressionProperty } from "../expressionProperty";
+import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from './inputDialog';
+import { DialogContext, Choice, ListStyle, ChoiceFactoryOptions, FindChoicesOptions, ChoiceFactory, recognizeChoices, ModelResult, FoundChoice } from 'botbuilder-dialogs';
+import { Activity } from 'botbuilder-core';
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
+import { TextTemplate } from '../templates/textTemplate';
 
 export interface ChoiceInputConfiguration extends InputDialogConfiguration {
     outputFormat?: ChoiceOutputFormat;
@@ -88,8 +89,12 @@ export class ChoiceInput extends InputDialog<ChoiceInputOptions> {
 
             // Initialize properties
             this.property = property;
-            if (value !== undefined) { this.value = new ExpressionProperty(value as any) }
-            this.prompt.value = prompt as PromptType;
+            if (value !== undefined) { this.value = new ExpressionProperty(value as any); }
+            if (typeof prompt === 'string') {
+                this.prompt = new TextTemplate(prompt);
+            } else {
+                this.prompt = new TextTemplate(prompt.toString());
+            }
 
             // If we were passed in a choice list then create a lambda that returns the list.
             const expression = Array.isArray(choices) ? _ => choices : choices;
@@ -118,7 +123,7 @@ export class ChoiceInput extends InputDialog<ChoiceInputOptions> {
     }
 
     protected onComputeId(): string {
-        return `ChoiceInput[${this.prompt.value.toString()}]`;
+        return `ChoiceInput[${ this.prompt.toString() }]`;
     }
 
     protected onInitializeOptions(dc: DialogContext, options: ChoiceInputOptions): ChoiceInputOptions {
@@ -130,10 +135,10 @@ export class ChoiceInput extends InputDialog<ChoiceInputOptions> {
                 if (Array.isArray(value)) {
                     options.choices = value;
                 } else {
-                    throw new Error(`${this.id}: no choices returned by expression.`);
+                    throw new Error(`${ this.id }: no choices returned by expression.`);
                 }
             } else {
-                throw new Error(`${this.id}: no choices specified.`);
+                throw new Error(`${ this.id }: no choices specified.`);
             }
         }
         return super.onInitializeOptions(dc, options);
@@ -173,7 +178,7 @@ export class ChoiceInput extends InputDialog<ChoiceInputOptions> {
         return InputState.valid;
     }
 
-    protected onRenderPrompt(dc: DialogContext, state: InputState): Partial<Activity> {
+    protected async onRenderPrompt(dc: DialogContext, state: InputState): Promise<Partial<Activity>> {
         // Determine locale
         let locale: string = dc.context.activity.locale || this.defaultLocale;
         if (!locale || !ChoiceInput.defaultChoiceOptions.hasOwnProperty(locale)) {
@@ -185,7 +190,7 @@ export class ChoiceInput extends InputDialog<ChoiceInputOptions> {
         const choices = ChoiceFactory.toChoices(options.choices);
 
         // Format prompt to send
-        const prompt = super.onRenderPrompt(dc, state);
+        const prompt = await super.onRenderPrompt(dc, state);
         const channelId: string = dc.context.activity.channelId;
         const choiceOptions: ChoiceFactoryOptions = this.choiceOptions || ChoiceInput.defaultChoiceOptions[locale];
         return this.appendChoices(prompt, channelId, choices, this.style, choiceOptions);

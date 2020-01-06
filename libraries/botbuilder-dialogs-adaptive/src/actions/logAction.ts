@@ -6,27 +6,15 @@
  * Licensed under the MIT License.
  */
 import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
-import { format } from '../stringTemplate';
+import { Template } from '../template';
+import { TextTemplate } from '../templates/textTemplate';
 import { Activity, ActivityTypes } from 'botbuilder-core';
-
-export interface LogActionConfiguration extends DialogConfiguration {
-    /**
-     * The text template to log.
-     */
-    template?: string;
-
-    /**
-     * If true, the message will both be logged to the console and sent as a trace activity.
-     * Defaults to a value of false.
-     */
-    sendTrace?: boolean;
-}
 
 export class LogAction extends Dialog {
     /**
      * The text template to log.
      */
-    public template: string;
+    public text: Template;
 
     /**
      * If true, the message will both be logged to the console and sent as a trace activity.
@@ -43,26 +31,16 @@ export class LogAction extends Dialog {
     constructor(template: string, sendTrace?: boolean);
     constructor(template?: string, sendTrace = false) {
         super();
-        if (template) { this.template = template }
+        if (template) { this.text = new TextTemplate(template); }
         this.sendTrace = sendTrace;
     }
 
     protected onComputeId(): string {
-        return `LogAction[${this.template}]`;
-    }
-
-    public configure(config: LogActionConfiguration): this {
-        return super.configure(config);
+        return `LogAction[${ this.text }]`;
     }
 
     public async beginDialog(dc: DialogContext, options: object): Promise<DialogTurnResult> {
-        if (!this.template) { throw new Error(`${this.id}: no 'message' specified.`) }
-
-        // Format message
-        const data = Object.assign({
-            utterance: dc.context.activity.text || ''
-        }, dc.state, options);
-        const msg = format(this.template, dc);
+        const msg = await this.text.bindToData(dc.context, dc.state);
 
         // Log to console and send trace if needed
         console.log(msg);

@@ -5,9 +5,10 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from "./inputDialog";
-import { DialogContext } from "botbuilder-dialogs";
-import { ExpressionPropertyValue, ExpressionProperty } from "../expressionProperty";
+import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from './inputDialog';
+import { DialogContext } from 'botbuilder-dialogs';
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
+import { TextTemplate } from '../templates/textTemplate';
 
 export interface TextInputConfiguration extends InputDialogConfiguration {
     outputFormat?: TextOutputFormat;
@@ -35,8 +36,12 @@ export class TextInput extends InputDialog<InputDialogOptions> {
                 value = undefined;
             }
             this.property = property;
-            if (value !== undefined) { this.value = new ExpressionProperty(value as any) }
-            this.prompt.value = prompt;
+            if (value !== undefined) { this.value = new ExpressionProperty(value as any); }
+            if (typeof prompt === 'string') {
+                this.prompt = new TextTemplate(prompt);
+            } else {
+                this.prompt = new TextTemplate(prompt.text);
+            }
         }
     }
 
@@ -45,7 +50,7 @@ export class TextInput extends InputDialog<InputDialogOptions> {
     }
 
     protected onComputeId(): string {
-        return `TextInput[${this.prompt.value.toString()}]`;
+        return `TextInput[${ this.prompt.toString() }]`;
     }
 
     protected async onRecognizeInput(dc: DialogContext, consultation: boolean): Promise<InputState> {

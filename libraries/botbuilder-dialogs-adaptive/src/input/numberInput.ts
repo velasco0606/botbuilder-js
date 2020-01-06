@@ -5,11 +5,12 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from "./inputDialog";
-import { DialogContext } from "botbuilder-dialogs";
+import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from './inputDialog';
+import { DialogContext } from 'botbuilder-dialogs';
 import * as Recognizers from '@microsoft/recognizers-text-number';
-import { Activity } from "botbuilder-core";
-import { ExpressionProperty, ExpressionPropertyValue } from "../expressionProperty";
+import { Activity } from 'botbuilder-core';
+import { ExpressionProperty, ExpressionPropertyValue } from '../expressionProperty';
+import { TextTemplate } from '../templates/textTemplate';
 
 export interface NumberInputConfiguration extends InputDialogConfiguration {
     outputFormat?: NumberOutputFormat;
@@ -41,8 +42,12 @@ export class NumberInput extends InputDialog<InputDialogOptions> {
                 value = undefined;
             }
             this.property = property;
-            if (value !== undefined) { this.value = new ExpressionProperty(value as any) }
-            this.prompt.value = prompt;
+            if (value !== undefined) { this.value = new ExpressionProperty(value as any); }
+            if (typeof prompt === 'string') {
+                this.prompt = new TextTemplate(prompt);
+            } else {
+                this.prompt = new TextTemplate(prompt.text);
+            }
         }
     }
 
@@ -51,7 +56,7 @@ export class NumberInput extends InputDialog<InputDialogOptions> {
     }
 
     protected onComputeId(): string {
-        return `NumberInput[${this.prompt.value.toString()}]`;
+        return `NumberInput[${ this.prompt.toString() }]`;
     }
 
     protected async onRecognizeInput(dc: DialogContext, consultation: boolean): Promise<InputState> {

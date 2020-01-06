@@ -5,10 +5,11 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from "./inputDialog";
-import { DialogContext } from "botbuilder-dialogs";
+import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from './inputDialog';
+import { DialogContext } from 'botbuilder-dialogs';
 import * as Recognizers from '@microsoft/recognizers-text-date-time';
-import { ExpressionPropertyValue, ExpressionProperty } from "../expressionProperty";
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
+import { TextTemplate } from '../templates';
 
 
 export interface DatetimeInputConfiguration extends InputDialogConfiguration {
@@ -30,8 +31,12 @@ export class DatetimeInput extends InputDialog<InputDialogOptions> {
                 value = undefined;
             }
             this.property = property;
-            if (value !== undefined) { this.value = new ExpressionProperty(value as any) }
-            this.prompt.value = prompt;
+            if (value !== undefined) { this.value = new ExpressionProperty(value as any); }
+            if (typeof prompt === 'string') {
+                this.prompt = new TextTemplate(prompt);
+            } else {
+                this.prompt = new TextTemplate(prompt.text);
+            }
         }
     }
 
@@ -40,14 +45,14 @@ export class DatetimeInput extends InputDialog<InputDialogOptions> {
     }
 
     protected onComputeId(): string {
-        return `DatetimeInput[${this.prompt.value.toString()}]`;
+        return `DatetimeInput[${ this.prompt.toString() }]`;
     }
 
     protected async onRecognizeInput(dc: DialogContext, consultation: boolean): Promise<InputState> {
         // Recognize input and filter out non-attachments
         const input: object = dc.state.getValue(InputDialog.VALUE_PROPERTY).value;
         const utterance: string = dc.context.activity.text;
-        const locale: string = dc.context.activity.locale || this.defaultLocale || "en-us";
+        const locale: string = dc.context.activity.locale || this.defaultLocale || 'en-us';
         const results: any[] = Recognizers.recognizeDateTime(utterance, locale);
 
         if (results.length > 0 && results[0].resolution) {

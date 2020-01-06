@@ -7,9 +7,11 @@
  */
 import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
 import { ExpressionProperty, ExpressionPropertyValue } from '../expressionProperty';
-import fetch, * as request from "node-fetch";
+import fetch, * as request from 'node-fetch';
 import { Activity } from 'botbuilder-core';
-import * as stringTemplate from '../stringTemplate';
+import { Template } from '../template';
+import { TextTemplate } from '../templates/textTemplate';
+import { ExpressionEngine } from 'botframework-expressions';
 
 export interface HttpRequestConfiguration extends DialogConfiguration {
 
@@ -54,27 +56,27 @@ export enum HttpMethod {
     /**
      * Http GET
      */
-    GET = "GET",
+    GET = 'GET',
 
     /**
      * Http POST
      */
-    POST = "POST",
+    POST = 'POST',
 
     /**
      * Http PATCH
      */
-    PATCH = "PATCH",
+    PATCH = 'PATCH',
 
     /**
      * Http PUT
      */
-    PUT = "PUT",
+    PUT = 'PUT',
 
     /**
      * Http DELETE
      */
-    DELETE = "DELETE"
+    DELETE = 'DELETE'
 }
 
 export class HttpRequest<O extends object = {}> extends Dialog<O> {
@@ -130,7 +132,7 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
     }
 
     protected onComputeId(): string {
-        return `HttpRequest[${this.method} ${this.url}]`;
+        return `HttpRequest[${ this.method } ${ this.url }]`;
     }
 
     public configure(config: HttpRequestConfiguration): this {
@@ -142,8 +144,8 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
         /**
          * TODO: replace the key value pair in json recursively
          */
-
-        const url = stringTemplate.format(this.url, dc);
+        let url = this.url;
+        url = await new TextTemplate(this.url).bindToData(dc.context, dc.state);
         const headers = this.headers;
 
         const instanceBody = this.ReplaceBodyRecursively(dc, this.body);
@@ -209,10 +211,10 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
             let text: string = unit as string;
             if (text.startsWith('{') && text.endsWith('}')) {
                 text = text.slice(1, text.length - 1);
-                return new ExpressionProperty(text).evaluate(this.id, dc.state);
+                return new ExpressionEngine().parse(text).tryEvaluate(dc.state).value;
             }
             else {
-                return stringTemplate.format(text, dc);
+                return new TextTemplate(text).bindToData(dc.context, dc.state);
             }
         }
 
@@ -220,7 +222,7 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
             let result = [];
             unit.forEach(child => {
                 result.push(this.ReplaceBodyRecursively(dc, child));
-            })
+            });
             return result;
         }
 
@@ -237,7 +239,7 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
 }
 
 export class Result {
-    public statusCode?: Number;
+    public statusCode?: number;
 
     public reasonPhrase?: string;
 

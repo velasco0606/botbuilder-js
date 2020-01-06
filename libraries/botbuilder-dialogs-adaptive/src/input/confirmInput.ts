@@ -5,12 +5,13 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from "./inputDialog";
-import { DialogContext, Choice, ListStyle, ChoiceFactoryOptions, ChoiceFactory, ModelResult, recognizeChoices } from "botbuilder-dialogs";
+import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from './inputDialog';
+import { DialogContext, Choice, ListStyle, ChoiceFactoryOptions, ChoiceFactory, ModelResult, recognizeChoices } from 'botbuilder-dialogs';
 import * as Recognizers from '@microsoft/recognizers-text-choice';
-import { Activity } from "botbuilder-core";
-import { ChoiceList } from "./choiceInput";
-import { ExpressionPropertyValue, ExpressionProperty } from "../expressionProperty";
+import { Activity } from 'botbuilder-core';
+import { ChoiceList } from './choiceInput';
+import { ExpressionPropertyValue, ExpressionProperty } from '../expressionProperty';
+import { TextTemplate } from '../templates/textTemplate';
 
 export interface ConfirmInputConfiguration extends InputDialogConfiguration {
     defaultLocale?: string;
@@ -24,7 +25,7 @@ export class ConfirmInput extends InputDialog<InputDialogOptions> {
     /**
      * Default options for rendering the choices to the user based on locale.
      */
-    private static defaultChoiceOptions: { [locale: string]: { choices: (string | Choice)[], options: ChoiceFactoryOptions } } = {
+    private static defaultChoiceOptions: { [locale: string]: { choices: (string | Choice)[]; options: ChoiceFactoryOptions } } = {
         'es-es': { choices: ['Sí', 'No'], options: { inlineSeparator: ', ', inlineOr: ' o ', inlineOrMore: ', o ', includeNumbers: true } },
         'nl-nl': { choices: ['Ja', 'Nee'], options: { inlineSeparator: ', ', inlineOr: ' of ', inlineOrMore: ', of ', includeNumbers: true } },
         'en-us': { choices: ['Yes', 'No'], options: { inlineSeparator: ', ', inlineOr: ' or ', inlineOrMore: ', or ', includeNumbers: true } },
@@ -70,8 +71,12 @@ export class ConfirmInput extends InputDialog<InputDialogOptions> {
                 value = undefined;
             }
             this.property = property;
-            if (value !== undefined) { this.value = new ExpressionProperty(value as any) }
-            this.prompt.value = prompt;
+            if (value !== undefined) { this.value = new ExpressionProperty(value as any); }
+            if (typeof prompt === 'string') {
+                this.prompt = new TextTemplate(prompt);
+            } else {
+                this.prompt = new TextTemplate(prompt.text);
+            }
         }
     }
 
@@ -80,7 +85,7 @@ export class ConfirmInput extends InputDialog<InputDialogOptions> {
     }
 
     protected onComputeId(): string {
-        return `ConfirmInput[${this.prompt.value.toString()}]`;
+        return `ConfirmInput[${ this.prompt.toString() }]`;
     }
 
     protected async onRecognizeInput(dc: DialogContext, consultation: boolean): Promise<InputState> {
@@ -111,7 +116,7 @@ export class ConfirmInput extends InputDialog<InputDialogOptions> {
         return InputState.valid;
     }
 
-    protected onRenderPrompt(dc: DialogContext, state: InputState): Partial<Activity> {
+    protected async onRenderPrompt(dc: DialogContext, state: InputState): Promise<Partial<Activity>> {
         // Determine locale
         let locale: string = dc.context.activity.locale || this.defaultLocale;
         if (!locale || !ConfirmInput.defaultChoiceOptions.hasOwnProperty(locale)) {
@@ -123,7 +128,7 @@ export class ConfirmInput extends InputDialog<InputDialogOptions> {
         const choices = ChoiceFactory.toChoices(confirmChoices);
 
         // Format prompt to send
-        const prompt = super.onRenderPrompt(dc, state);
+        const prompt = await super.onRenderPrompt(dc, state);
         const channelId: string = dc.context.activity.channelId;
         const choiceOptions: ChoiceFactoryOptions = this.choiceOptions || ConfirmInput.defaultChoiceOptions[locale].options;
         return this.appendChoices(prompt, channelId, choices, this.style, choiceOptions);
