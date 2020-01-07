@@ -24,6 +24,9 @@ export interface LogActionConfiguration extends DialogConfiguration {
 }
 
 export class LogAction extends Dialog {
+
+    public static declarativeType = 'Microsoft.LogAction';
+    
     /**
      * The text template to log.
      */
