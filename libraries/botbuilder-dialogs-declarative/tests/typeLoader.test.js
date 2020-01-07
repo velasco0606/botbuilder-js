@@ -106,12 +106,12 @@ describe('TypeLoader', function() {
 });
 
 async function declarativeTestCase(path, resourcesFolder) {
-    const json = await readPackageJson(`tests/resources/${ path }`);
+    const json = await readPackageJson(`libraries/botbuilder-dialogs-declarative/tests/resources/${ path }`);
     let loader = new TypeLoader();
 
     if (resourcesFolder) {
         let resourceExplorer = new ResourceExplorer();
-        resourceExplorer.addFolder(`./tests/resources`);
+        resourceExplorer.addFolder(`./libraries/botbuilder-dialogs-declarative/tests/resources`);
         loader = new TypeLoader(null, resourceExplorer);
     }
 
