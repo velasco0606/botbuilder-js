@@ -94,7 +94,7 @@ export class SendList extends Dialog {
 
         // Render list content
         let list = '';
-        const value = dc.state.getValue(this.listProperty).value;
+        const value = dc.state.getValue(this.listProperty);
         if (Array.isArray(value) && value.length > 0) {
             value.forEach(async (item): Promise<void> => {
                 list += (await this._itemTemplate.bindToData(dc.context, { item: item })).text;

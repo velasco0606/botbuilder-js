@@ -1,5 +1,17 @@
-import { Activity, ActivityTypes } from "botbuilder-core";
-import { AssertReplyActivity } from "./assertReplyActivity";
+/**
+ * @module botbuilder-dialogs-adaptive
+ */
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+import { Activity, ActivityTypes } from 'botbuilder-core';
+import { AssertReplyActivity, AssertReplyActivityConfiguration } from './assertReplyActivity';
+
+export interface AssertReplyOneOfConfiguration extends AssertReplyActivityConfiguration {
+    text?: string[];
+    exact?: boolean;
+}
 
 export class AssertReplyOneOf extends AssertReplyActivity {
     public static readonly declarativeType: string = 'Microsoft.Test.AssertReplyOneOf';
@@ -13,6 +25,10 @@ export class AssertReplyOneOf extends AssertReplyActivity {
      * A value indicating whether exact match policy should be used.
      */
     public exact: boolean = true;
+
+    public configure(config: AssertReplyOneOfConfiguration): this {
+        return super.configure(config);
+    }
 
     public getConditionDescription(): string {
         return this.text.join('\n');

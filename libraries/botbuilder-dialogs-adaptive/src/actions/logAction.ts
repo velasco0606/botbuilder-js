@@ -10,6 +10,19 @@ import { Template } from '../template';
 import { TextTemplate } from '../templates/textTemplate';
 import { Activity, ActivityTypes } from 'botbuilder-core';
 
+export interface LogActionConfiguration extends DialogConfiguration {
+    /**
+     * The text template to log.
+     */
+    text?: Template;
+
+    /**
+     * If true, the message will both be logged to the console and sent as a trace activity.
+     * Defaults to a value of false.
+     */
+    traceActivity?: boolean;
+}
+
 export class LogAction extends Dialog {
     /**
      * The text template to log.
@@ -20,19 +33,19 @@ export class LogAction extends Dialog {
      * If true, the message will both be logged to the console and sent as a trace activity.
      * Defaults to a value of false.
      */
-    public sendTrace: boolean;
+    public traceActivity: boolean = false;
 
     /**
      * Creates a new `SendActivity` instance.
      * @param template The text template to log.
      * @param sendTrace (Optional) If true, the message will both be logged to the console and sent as a trace activity.  Defaults to a value of false.
      */
-    constructor();
-    constructor(template: string, sendTrace?: boolean);
-    constructor(template?: string, sendTrace = false) {
+    public constructor();
+    public constructor(text: string, traceActivity?: boolean);
+    public constructor(text?: string, traceActivity = false) {
         super();
-        if (template) { this.text = new TextTemplate(template); }
-        this.sendTrace = sendTrace;
+        if (text) { this.text = new TextTemplate(text); }
+        this.traceActivity = traceActivity;
     }
 
     protected onComputeId(): string {
@@ -44,7 +57,7 @@ export class LogAction extends Dialog {
 
         // Log to console and send trace if needed
         console.log(msg);
-        if (this.sendTrace) {
+        if (this.traceActivity) {
             const activity: Partial<Activity> = {
                 type: ActivityTypes.Trace,
                 name: 'LogAction',

@@ -5,28 +5,19 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
+import fetch from 'node-fetch';
 import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
-import { ExpressionProperty, ExpressionPropertyValue } from '../expressionProperty';
-import fetch, * as request from 'node-fetch';
 import { Activity } from 'botbuilder-core';
-import { Template } from '../template';
-import { TextTemplate } from '../templates/textTemplate';
 import { ExpressionEngine } from 'botframework-expressions';
+import { TextTemplate } from '../templates/textTemplate';
 
 export interface HttpRequestConfiguration extends DialogConfiguration {
-
     method?: HttpMethod;
-
     valueType?: string;
-
     url?: string;
-
     headers?: object;
-
     body?: object;
-
     responseType?: ResponsesTypes;
-
     resultProperty?: string;
 }
 
@@ -81,6 +72,8 @@ export enum HttpMethod {
 
 export class HttpRequest<O extends object = {}> extends Dialog<O> {
 
+    public static declarativeType = 'Microsoft.HttpRequest';
+
     /**
      * Http Method
      */
@@ -110,11 +103,11 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
      */
     public resultProperty?: string;
 
-    constructor();
-    constructor(method: HttpMethod, url: string, headers: object,
+    public constructor();
+    public constructor(method: HttpMethod, url: string, headers: object,
         body: object,
         responseType: ResponsesTypes, resultProperty: string);
-    constructor(method?: HttpMethod, url?: string, headers?: object,
+    public constructor(method?: HttpMethod, url?: string, headers?: object,
         body?: object,
         responseType?: ResponsesTypes, resultProperty?: string) {
         super();
@@ -139,7 +132,7 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
         return super.configure(config);
     }
 
-    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+    public async beginDialog(dc: DialogContext, options?: O): Promise<DialogTurnResult> {
 
         /**
          * TODO: replace the key value pair in json recursively
@@ -211,7 +204,8 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
             let text: string = unit as string;
             if (text.startsWith('{') && text.endsWith('}')) {
                 text = text.slice(1, text.length - 1);
-                return new ExpressionEngine().parse(text).tryEvaluate(dc.state).value;
+                const { value } = new ExpressionEngine().parse(text).tryEvaluate(dc.state);
+                return value;
             }
             else {
                 return new TextTemplate(text).bindToData(dc.context, dc.state);

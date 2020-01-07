@@ -15,7 +15,7 @@ export interface SendActivityConfiguration extends DialogConfiguration {
     /**
      * Activity or message text to send the user.
      */
-    activityOrText?: Partial<Activity>|string;
+    activity?: Partial<Activity> | string;
 
     /**
      * (Optional) Structured Speech Markup Language (SSML) to speak to the user.
@@ -28,7 +28,9 @@ export interface SendActivityConfiguration extends DialogConfiguration {
     inputHint?: InputHints;
 }
 
-export class SendActivity extends Dialog {
+export class SendActivity<O extends object = {}> extends Dialog<O> {
+
+    public static declarativeType = 'Microsoft.SendActivity';
 
     /**
      * Creates a new `SendActivity` instance.

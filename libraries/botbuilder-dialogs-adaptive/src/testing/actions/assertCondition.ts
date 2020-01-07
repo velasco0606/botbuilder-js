@@ -1,7 +1,20 @@
-import { Dialog, DialogContext, DialogTurnResult } from "botbuilder-dialogs";
-import { ExpressionEngine } from "botframework-expressions";
+/**
+ * @module botbuilder-dialogs-adaptive
+ */
+/**
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+import { Dialog, DialogContext, DialogTurnResult, DialogConfiguration } from 'botbuilder-dialogs';
+import { ExpressionEngine } from 'botframework-expressions';
 
-export class AssertCondition extends Dialog {
+export interface AssertConditionConfiguration extends DialogConfiguration {
+    condition?: string;
+    description?: string;
+}
+
+export class AssertCondition<O extends object = {}> extends Dialog<O> {
+
     public static readonly declarativeType: string = 'Microsoft.Test.AssertCondition';
 
     /**
@@ -14,12 +27,20 @@ export class AssertCondition extends Dialog {
      */
     public description: string;
 
-    public async beginDialog(dc: DialogContext, _options?: any): Promise<DialogTurnResult> {
+    public configure(config: AssertConditionConfiguration): this {
+        return super.configure(config);
+    }
+
+    public async beginDialog(dc: DialogContext, options?: O): Promise<DialogTurnResult> {
         const parser = new ExpressionEngine()
         const { value, error } = parser.parse(this.condition).tryEvaluate(dc.state);
         if (!value || error) {
             throw new Error(this.description);
         }
         return dc.endDialog();
+    }
+
+    protected onComputeId(): string {
+        return `AssertCondition[${ this.condition }]`;
     }
 }
