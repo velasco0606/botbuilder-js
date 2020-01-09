@@ -6,7 +6,7 @@
  * Licensed under the MIT License.
  */
 import { DialogTurnResult, Dialog, DialogContext } from 'botbuilder-dialogs';
-import { ExpressionEngine } from 'botframework-expressions';
+import { ExpressionEngine, Expression } from 'botframework-expressions';
 import { ActionScope, ActionScopeResult, ActionScopeConfiguration } from './actionScope';
 
 const INDEX = 'dialog.foreach.index';
@@ -17,10 +17,10 @@ const VALUE = 'dialog.foreach.value';
  */
 export interface ForEachConfiguration extends ActionScopeConfiguration {
     itemsProperty?: string;
+    disabled?: string;
 }
 
 export class ForEach<O extends object = {}> extends ActionScope<O> {
-
     public static declarativeType = 'Microsoft.Foreach';
 
     public constructor();
@@ -32,9 +32,36 @@ export class ForEach<O extends object = {}> extends ActionScope<O> {
     }
 
     /**
-     * Property path expression to the collection of items.
+     * Get property path expression to the collection of items.
      */
-    public itemsProperty: string;
+    public get itemsProperty(): string {
+        return this._itemsPropertyExpression ? this._itemsPropertyExpression.toString() : undefined;
+    }
+
+    /**
+     * Set property path expression to the collection of items.
+     */
+    public set itemsProperty(value: string) {
+        this._itemsPropertyExpression = value ? new ExpressionEngine().parse(value) : undefined;
+    }
+
+    /**
+     * Get an optional expression which if is true will disable this action.
+     */
+    public get disabled(): string {
+        return this._disabled ? this._disabled.toString() : undefined;
+    }
+
+    /**
+     * Set an optional expression which if is true will disable this action.
+     */
+    public set disabled(value: string) {
+        this._disabled = value ? new ExpressionEngine().parse(value) : undefined;
+    }
+
+    private _itemsPropertyExpression: Expression;
+
+    private _disabled: Expression;
 
     public getDependencies(): Dialog[] {
         return this.actions;
@@ -45,6 +72,12 @@ export class ForEach<O extends object = {}> extends ActionScope<O> {
     }
 
     public async beginDialog(dc: DialogContext, options?: O): Promise<DialogTurnResult> {
+        if (this._disabled) {
+            const { value } = this._disabled.tryEvaluate(dc.state);
+            if (!!value) {
+                return await dc.endDialog();
+            }
+        }
         dc.state.setValue(INDEX, -1);
         return await this.nextItem(dc);
     }
@@ -62,8 +95,7 @@ export class ForEach<O extends object = {}> extends ActionScope<O> {
     }
 
     protected async nextItem(dc: DialogContext): Promise<DialogTurnResult> {
-        const itemsProperty = new ExpressionEngine().parse(this.itemsProperty);
-        const { value } = itemsProperty.tryEvaluate(dc.state);
+        const { value } = this._itemsPropertyExpression.tryEvaluate(dc.state);
         let index = dc.state.getValue(INDEX);
 
         if (++index < value.length) {
