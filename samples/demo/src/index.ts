@@ -25,6 +25,15 @@ const adapter = new BotFrameworkAdapter({
     appPassword: process.env.microsoftAppPassword,
 });
 
+const io = require('socket.io')(server.server);
+io.on('connect', socket => {
+    console.log('connect', socket.conn.id);
+    adapter.emitEvent = (name: string, value: string) => {
+        console.log(name, value);
+        socket.emit(name, value);
+    };
+});
+
 const dialogPath = 'resources/Main.dialog';
 const resourcePath = 'resources';
 
@@ -57,11 +66,34 @@ async function loadDialog() {
     dialogManager.rootDialog = dialog;
 }
 
+server.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, Authorization, X-Requested-With, Content-Type, Accept');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    next();
+});
+
+server.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+    } else {
+        next();
+    }
+});
+
 server.post('/api/messages', (req, res) => {
     adapter.processActivity(req, res, async (context) => {
         // Route activity to bot.
         await dialogManager.onTurn(context);
     });
+});
+
+server.get('/api/dialog', (req, res) => {
+    const json = JSON.stringify(dialogManager.rootDialog);
+    res.setHeader('Content-Type', 'application/json');
+    res.end(json.replace(/\$kind/g, '$type'));
 });
 
 loadDialog();

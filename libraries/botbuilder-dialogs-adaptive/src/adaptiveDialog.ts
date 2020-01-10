@@ -20,7 +20,6 @@ import { OnCondition } from './conditions';
 import { Recognizer } from './recognizers';
 import { TriggerSelector } from './triggerSelector';
 import { FirstSelector } from './selectors';
-import { AdaptiveFootprintTracker } from './adaptiveFootprintTracker';
 
 export interface AdaptiveDialogConfiguration extends DialogConfiguration {
     /**
@@ -373,7 +372,10 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
             const evt = this.triggers[selection[0]];
             const changes = await evt.execute(sequenceContext);
             if (changes && changes.length > 0) {
-                AdaptiveFootprintTracker.reportConditionPath(evt.path);
+                const adapter = sequenceContext.context.adapter;
+                if (adapter.emitEvent) {
+                    adapter.emitEvent('runtime/HitTrigger', evt.path);
+                }
                 sequenceContext.queueChanges(changes[0]);
                 return true;
             }

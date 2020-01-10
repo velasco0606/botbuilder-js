@@ -30,6 +30,8 @@ export abstract class BotAdapter {
     protected middleware: MiddlewareSet = new MiddlewareSet();
     private turnError: (context: TurnContext, error: Error) => Promise<void>;
 
+    public emitEvent: (name: string, value: string) => void;
+
     /**
      * Asynchronously sends a set of outgoing activities to a channel server.
      * 
