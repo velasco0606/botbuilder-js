@@ -5,9 +5,10 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { Dialog } from 'botbuilder-dialogs';
+import { Dialog, TurnPath } from 'botbuilder-dialogs';
 import { ExpressionParserInterface, Expression, ExpressionType } from 'botframework-expressions';
-import { AdaptiveEventNames } from '../sequenceContext';
+import { RecognizerResult } from 'botbuilder-core';
+import { AdaptiveEventNames, SequenceContext, ActionChangeList, ActionState, ActionChangeType } from '../sequenceContext';
 import { OnDialogEvent, OnDialogEventConfiguration } from './onDialogEvent';
 
 export interface OnIntentConfiguration extends OnDialogEventConfiguration {
@@ -55,12 +56,12 @@ export class OnIntent extends OnDialogEvent {
         }
 
         const trimmedIntent = this.intent.startsWith('#') ? this.intent.substring(1) : this.intent;
-        let intentExpression = parser.parse(`turn.recognized.intent == '${trimmedIntent}'`)
+        let intentExpression = parser.parse(`${ TurnPath.RECOGNIZED }.intent == '${trimmedIntent}'`)
 
         if (this.entities.length > 0) {
             intentExpression = Expression.makeExpression(ExpressionType.And,
                 undefined, intentExpression, ...this.entities.map(entity => {
-                    if (entity.startsWith('@') || entity.startsWith('turn.recognized')) {
+                    if (entity.startsWith('@') || entity.startsWith(TurnPath.RECOGNIZED)) {
                         return parser.parse(`exists(${entity})`);
                     }
                     return parser.parse(`exists(@${entity})`);
@@ -68,5 +69,40 @@ export class OnIntent extends OnDialogEvent {
         }
 
         return Expression.makeExpression(ExpressionType.And, undefined, intentExpression, super.getExpression(parser));
+    }
+
+    protected onCreateChangeList(planning: SequenceContext, dialogOptions?: any): ActionChangeList {
+        const recognizerResult = planning.state.getValue<RecognizerResult>(`${TurnPath.DIALOGEVENT}.value`);
+        if (recognizerResult) {
+            // Get top scoring intent
+            let topIntent: string;
+            let topScore = -1;
+            for (const key in recognizerResult.intents) {
+                if (recognizerResult.intents.hasOwnProperty(key)) {
+                    if (topIntent == undefined) {
+                        topIntent = key;
+                        topScore = recognizerResult.intents[key].score;
+                    } else if (recognizerResult.intents[key].score > topScore) {
+                        topIntent = key;
+                        topScore = recognizerResult.intents[key].score;
+                    }
+                }
+            }
+
+            const actionState: ActionState = {
+                dialogId: this.actionScope.id,
+                options: dialogOptions,
+                dialogStack: []
+            };
+
+            const changeList: ActionChangeList = {
+                changeType: ActionChangeType.insertActions,
+                actions: [actionState]
+            };
+
+            return changeList;
+        }
+
+        return super.onCreateChangeList(planning, dialogOptions);
     }
 }

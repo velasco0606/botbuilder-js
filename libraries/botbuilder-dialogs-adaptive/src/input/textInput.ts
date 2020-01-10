@@ -19,7 +19,6 @@ export class TextInput extends InputDialog {
 
     private _outputFormatExpression: Expression;
 
-
     public get outputFormat(): string {
         return this._outputFormatExpression ? this._outputFormatExpression.toString() : undefined;
     }
