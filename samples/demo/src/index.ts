@@ -96,4 +96,19 @@ server.get('/api/dialog', (req, res) => {
     res.end(json.replace(/\$kind/g, '$type'));
 });
 
+server.get('/api/resource', (req, res) => {
+    fs.readdir(resourcePath, (err, files) => {
+        const result = {};
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const name = file.replace('.dialog', '');
+            const data = fs.readFileSync(`${ resourcePath }/${ file }`);
+            result[name] = JSON.parse(data.toString());
+        }
+        const json = JSON.stringify(result);
+        res.setHeader('Content-Type', 'application/json');
+        res.end(json.replace(/\$kind/g, '$type'));
+    });
+});
+
 loadDialog();
