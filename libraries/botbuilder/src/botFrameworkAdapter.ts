@@ -731,6 +731,13 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
             const authHeader: string = req.headers.authorization || req.headers.Authorization || '';
             await this.authenticateRequest(request, authHeader);
 
+            // Catch incoming request message
+            if (request.type == ActivityTypes.Message) {
+                if (this.emitEvent) {
+                    this.emitEvent('runtime/UserInput', JSON.stringify(request));
+                }
+            }
+
             // Process received activity
             status = 500;
             const context: TurnContext = this.createContext(request);
@@ -870,6 +877,12 @@ export class BotFrameworkAdapter extends BotAdapter implements IUserTokenProvide
                         ));
                     }
                     break;
+            }
+            // Catch outbound activities
+            if (activity.type == ActivityTypes.Message) {
+                if (this.emitEvent) {
+                    this.emitEvent('runtime/BotResponse', JSON.stringify(activity));
+                }
             }
         }
         return responses;
