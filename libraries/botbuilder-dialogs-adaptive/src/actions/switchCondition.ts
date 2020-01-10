@@ -5,9 +5,8 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { DialogTurnResult, DialogConfiguration, DialogDependencies, Dialog, DialogContext } from 'botbuilder-dialogs';
+import { DialogTurnResult, DialogConfiguration, DialogDependencies, Dialog, DialogContext, Configurable } from 'botbuilder-dialogs';
 import { Expression, ExpressionEngine } from 'botframework-expressions';
-import { SequenceContext } from '../sequenceContext';
 import { ActionScope } from './actionScope';
 import { Case } from './case';
 
@@ -16,10 +15,10 @@ export interface SwitchConditionConfiguration extends DialogConfiguration {
     default?: Dialog[];
     cases?: Case[];
     defaultScope?: ActionScope;
+    disabled?: string;
 }
 
-export class SwitchCondition<O extends object = {}> extends Dialog<O> implements DialogDependencies {
-
+export class SwitchCondition<O extends object = {}> extends Dialog<O> implements DialogDependencies, Configurable {
     public static declarativeType = 'Microsoft.SwitchCondition';
 
     public constructor();
@@ -30,12 +29,6 @@ export class SwitchCondition<O extends object = {}> extends Dialog<O> implements
         if (defaultDialogs) { this.default = defaultDialogs; }
         if (cases) { this.cases = cases; }
     }
-
-    private _caseExpresssions: any;
-
-    private _condition: Expression;
-
-    private _defaultScope: ActionScope;
 
     /**
      * Get condition expression against memory.
@@ -60,6 +53,28 @@ export class SwitchCondition<O extends object = {}> extends Dialog<O> implements
      * Cases.
      */
     public cases: Case[] = [];
+
+    /**
+     * Get an optional expression which if is true will disable this action.
+     */
+    public get disabled(): string {
+        return this._disabled ? this._disabled.toString() : undefined;
+    }
+
+    /**
+     * Set an optional expression which if is true will disable this action.
+     */
+    public set disabled(value: string) {
+        this._disabled = value ? new ExpressionEngine().parse(value) : undefined;
+    }
+
+    private _caseExpresssions: any;
+
+    private _condition: Expression;
+
+    private _defaultScope: ActionScope;
+
+    private _disabled: Expression;
 
     public getDependencies(): Dialog[] {
         let dialogs: Dialog[] = [];
@@ -92,35 +107,38 @@ export class SwitchCondition<O extends object = {}> extends Dialog<O> implements
     }
 
     public async beginDialog(dc: DialogContext, options?: O): Promise<DialogTurnResult> {
-        if (dc instanceof SequenceContext) {
-            if (!this._caseExpresssions) {
-                this._caseExpresssions = {};
-                for (let i = 0; i < this.cases.length; i++) {
-                    const caseScope = this.cases[i];
-                    const caseCondition = Expression.equalsExpression(this._condition, caseScope.createValueExpression());
-                    this._caseExpresssions[caseScope.value] = caseCondition;
-                }
+        if (this._disabled) {
+            const { value } = this._disabled.tryEvaluate(dc.state);
+            if (!!value) {
+                return await dc.endDialog();
             }
+        }
 
-            let actionScope = this.defaultScope;
-
+        if (!this._caseExpresssions) {
+            this._caseExpresssions = {};
             for (let i = 0; i < this.cases.length; i++) {
                 const caseScope = this.cases[i];
-                const caseCondition = this._caseExpresssions[caseScope.value] as Expression;
-                const { value, error } = caseCondition.tryEvaluate(dc.state);
-                if (error) {
-                    throw new Error(`Expression evaluation resulted in an error. Expression: ${ caseCondition.toString() }. Error: ${ error }`);
-                }
+                const caseCondition = Expression.equalsExpression(this._condition, caseScope.createValueExpression());
+                this._caseExpresssions[caseScope.value] = caseCondition;
+            }
+        }
 
-                if (!!value) {
-                    actionScope = caseScope;
-                }
+        let actionScope = this.defaultScope;
+
+        for (let i = 0; i < this.cases.length; i++) {
+            const caseScope = this.cases[i];
+            const caseCondition = this._caseExpresssions[caseScope.value] as Expression;
+            const { value, error } = caseCondition.tryEvaluate(dc.state);
+            if (error) {
+                throw new Error(`Expression evaluation resulted in an error. Expression: ${ caseCondition.toString() }. Error: ${ error }`);
             }
 
-            return await dc.replaceDialog(actionScope.id);
-        } else {
-            throw new Error('`SwitchCondition` should only be used in the context of an adaptive dialog.');
+            if (!!value) {
+                actionScope = caseScope;
+            }
         }
+
+        return await dc.replaceDialog(actionScope.id);
     }
 
     protected get defaultScope(): ActionScope {

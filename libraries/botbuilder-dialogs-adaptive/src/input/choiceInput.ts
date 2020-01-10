@@ -67,7 +67,7 @@ export class ChoiceInput extends InputDialog {
     /**
      * Control the format of the response (value or index of the choice).
      */
-    public outputFormat = ChoiceOutputFormat.Value;
+    public outputFormat = ChoiceOutputFormat.value;
 
     /**
      * Additional options passed to the `ChoiceFactory` and used to tweak the style of choices
@@ -164,7 +164,7 @@ export class ChoiceInput extends InputDialog {
     }
 
     protected onComputeId(): string {
-        return `ChoiceInput[${ this.prompt.toString() }]`;
+        return `ChoiceInput[${ this.prompt.value.toString() }]`;
     }
 
 }

@@ -82,7 +82,7 @@ export class ConfirmInput extends InputDialog {
     }
 
     protected onComputeId(): string {
-        return `ConfirmInput[${ this.prompt.toString() }]`;
+        return `ConfirmInput[${ this.prompt.value.toString() }]`;
     }
 
     protected async onRecognizeInput(dc: DialogContext): Promise<InputState> {
@@ -103,7 +103,7 @@ export class ConfirmInput extends InputDialog {
                     if (!error) {
                         dc.state.setValue(InputDialog.VALUE_PROPERTY, value);
                     } else {
-                        throw new Error(`OutputFormat expression evaluation resulted in an error. Expression: ${ this._outputFormatExpression.toString() }. Error: ${ error }`);
+                        throw new Error(`OutputFormat expression evaluation resulted in an error. Expression: ${ this._outputFormatExpression.toString() }. Error: ${error}`);
                     }
                 }
                 return InputState.valid;

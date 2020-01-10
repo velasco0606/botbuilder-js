@@ -22,14 +22,14 @@ export class AttachmentInput extends InputDialog {
 
     public static declarativeType = 'Microsoft.AttachmentInput';
 
-    public outputFormat = AttachmentOutputFormat.First;
+    public outputFormat = AttachmentOutputFormat.first;
 
     public configure(config: AttachmentInputConfiguration): this {
         return super.configure(config);
     }
 
     protected onComputeId(): string {
-        return `AttachmentInput[${ this.prompt.toString() }]`;
+        return `AttachmentInput[${ this.prompt.value.toString() }]`;
     }
 
     protected getDefaultInput(dc: DialogContext): any {
