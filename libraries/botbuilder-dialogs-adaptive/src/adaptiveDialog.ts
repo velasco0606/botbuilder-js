@@ -91,6 +91,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
         if (this.installedDependencies) {
             return;
         }
+
         this.installedDependencies = true;
 
         // Install each trigger actions
@@ -399,12 +400,7 @@ export class AdaptiveDialog<O extends object = {}> extends DialogContainer<O> {
         const action = this.createChildContext(sequence) as SequenceContext;
         if (action) {
             // Continue current action
-            console.log(`running action: ${action.actions[0].dialogId}`);
-            const dialogId = action.actions[0].dialogId;
-            const dialog = action.findDialog(dialogId);
-            if (dialog) {
-                AdaptiveFootprintTracker.reportActionPath(dialog.path);
-            }
+            // console.log(`running action: ${action.actions[0].dialogId}`);
             let result = await action.continueDialog();
 
             // Start action if not continued

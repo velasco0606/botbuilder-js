@@ -1,0 +1,50 @@
+{
+    "$kind": "Microsoft.AdaptiveDialog",
+    "id": "demoDialog",
+    "recognizer": {
+        "$kind": "Microsoft.RegexRecognizer",
+        "intents": [
+            {
+                "intent": "JokeIntent",
+                "pattern": "joke"
+            }
+        ]
+    },
+    "triggers": [
+        {
+            "$kind": "Microsoft.OnBeginDialog",
+            "actions": [
+                {
+                    "$kind": "Microsoft.SendActivity",
+                    "activity": "I'm a joke bot. To get started say 'tell me a joke'"
+                },
+                {
+                    "$kind": "Microsoft.BeginDialog",
+                    "options": {},
+                    "dialog": "AskNameDialog"
+                }
+            ]
+        },
+        {
+            "$kind": "Microsoft.OnIntent",
+            "intent": "JokeIntent",
+            "actions": [
+                {
+                    "$kind": "Microsoft.BeginDialog",
+                    "options": {},
+                    "dialog": "TellJokeDialog"
+                }
+            ]
+        },
+        {
+            "$kind": "Microsoft.OnUnknownIntent",
+            "actions": [
+                {
+                    "$kind": "Microsoft.SendActivity",
+                    "activity": "I'm a joke bot. To get started say 'tell me a joke'"
+                }
+            ]
+        }
+    ],
+    "defaultResultProperty": "dialog.result"
+}

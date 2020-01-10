@@ -6,6 +6,7 @@
  * Licensed under the MIT License.
  */
 import { Dialog, DialogDependencies, DialogContext, DialogTurnResult, DialogReason, DialogConfiguration } from 'botbuilder-dialogs';
+import { AdaptiveFootprintTracker } from '../adaptiveFootprintTracker';
 
 const OFFSET_KEY = 'this.offset';
 
@@ -109,7 +110,8 @@ export class ActionScope<O extends object = {}> extends Dialog<O> implements Dia
     protected async beginAction(dc: DialogContext, offset: number): Promise<DialogTurnResult> {
         dc.state.setValue(OFFSET_KEY, offset);
         const actionId = this.actions[offset].id;
-
+        const action = this.actions[offset];
+        AdaptiveFootprintTracker.reportActionPath(action.path);
         return await dc.beginDialog(actionId);
     }
 

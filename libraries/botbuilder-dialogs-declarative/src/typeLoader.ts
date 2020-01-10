@@ -9,7 +9,7 @@
 import { TypeFactory } from './factory/typeFactory';
 import { ComponentRegistration } from './componentRegistration';
 import { ResourceExplorer } from './resources/resourceExplorer';
-import { Dialog, Configurable } from 'botbuilder-dialogs';
+import { Configurable } from 'botbuilder-dialogs';
 
 export class TypeLoader {
 
