@@ -27,22 +27,24 @@ export interface ActionChangeList {
 }
 
 export enum ActionChangeType {
-    insertActions = 'insertActions',
-    appendActions = 'appendActions',
-    endSequence = 'endSequence',
-    replaceSequence = 'replaceSequence'
+    insertActions = 'InsertActions',
+    appendActions = 'AppendActions',
+    endSequence = 'EndSequence',
+    replaceSequence = 'ReplaceSequence'
 }
 
 export enum AdaptiveEventNames {
     beginDialog = 'beginDialog',
+    repromptDialog = 'repromptDialog',
+    cancelDialog = 'cancelDialog',
     activityReceived = 'activityReceived',
+    error = 'error',
     recognizeUtterance = 'recognizeUtterance',
     recognizedIntent = 'recognizedIntent',
     unknownIntent = 'unknownIntent',
     conversationMembersAdded = 'conversationMembersAdded',
     sequenceStarted = 'sequenceStarted',
-    sequenceEnded = 'sequenceEnded',
-    cancelDialog = 'cancelDialog'
+    sequenceEnded = 'sequenceEnded'
 }
 
 export class SequenceContext<O extends object = {}> extends DialogContext {
@@ -172,6 +174,7 @@ export class SequenceContext<O extends object = {}> extends DialogContext {
                 Array.prototype.unshift.apply(this.actions, change.actions);
                 break;
             case ActionChangeType.appendActions:
+            case ActionChangeType.replaceSequence:
                 Array.prototype.push.apply(this.actions, change.actions);
                 break;
         }

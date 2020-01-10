@@ -7,6 +7,8 @@
  */
 
 export * from './typeLoader';
+export * from './typeRegistration';
+export * from './componentRegistration';
 export * from './factory/typeFactory';
 export * from './factory/configurableTypeBuilder';
 export * from './factory/customTypeBuilder';
@@ -17,3 +19,5 @@ export * from './resources/fileResource';
 export * from './resources/resource';
 export * from './resources/resourceProvider';
 export * from './resources/fileResourceProvider';
+export * from './resources/folderResoureProvider';
+export * from './resources/resourceExplorer';

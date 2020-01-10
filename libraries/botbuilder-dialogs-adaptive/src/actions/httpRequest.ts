@@ -5,25 +5,19 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
+import fetch from 'node-fetch';
 import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
-import { ExpressionProperty, ExpressionPropertyValue } from '../expressionProperty';
-import fetch, * as request from "node-fetch";
 import { Activity } from 'botbuilder-core';
+import { ExpressionEngine } from 'botframework-expressions';
+import { TextTemplate } from '../templates/textTemplate';
 
 export interface HttpRequestConfiguration extends DialogConfiguration {
-
     method?: HttpMethod;
-
     valueType?: string;
-
     url?: string;
-
     headers?: object;
-
     body?: object;
-
     responseType?: ResponsesTypes;
-
     resultProperty?: string;
 }
 
@@ -53,30 +47,32 @@ export enum HttpMethod {
     /**
      * Http GET
      */
-    GET,
+    GET = 'GET',
 
     /**
      * Http POST
      */
-    POST,
+    POST = 'POST',
 
     /**
      * Http PATCH
      */
-    PATCH,
+    PATCH = 'PATCH',
 
     /**
      * Http PUT
      */
-    PUT,
+    PUT = 'PUT',
 
     /**
      * Http DELETE
      */
-    DELETE
+    DELETE = 'DELETE'
 }
 
 export class HttpRequest<O extends object = {}> extends Dialog<O> {
+
+    public static declarativeType = 'Microsoft.HttpRequest';
 
     /**
      * Http Method
@@ -86,17 +82,16 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
     /**
      * Http Url
      */
-    public url?: ExpressionProperty<string>;
+    public url?: string;
 
     /**
      * Http Headers
      */
-    public headers?: ExpressionProperty<any>;
-
+    public headers?: object;
     /**
      * Http Body
      */
-    public body?: ExpressionProperty<any>;
+    public body?: object;
 
     /**
      * The response type of the response
@@ -108,49 +103,74 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
      */
     public resultProperty?: string;
 
-    constructor();
-    constructor(method: HttpMethod, url: ExpressionPropertyValue<string>, headers: ExpressionPropertyValue<any>,
-        body: ExpressionPropertyValue<any>,
+    public constructor();
+    public constructor(method: HttpMethod, url: string, headers: object,
+        body: object,
         responseType: ResponsesTypes, resultProperty: string);
-    constructor(method?: HttpMethod, url?: ExpressionPropertyValue<string>, headers?: ExpressionPropertyValue<any>,
-        body?: ExpressionPropertyValue<any>,
+    public constructor(method?: HttpMethod, url?: string, headers?: object,
+        body?: object,
         responseType?: ResponsesTypes, resultProperty?: string) {
         super();
         this.method = method;
-        this.url = new ExpressionProperty(url);
-        this.headers = new ExpressionProperty(headers);
-        this.body = new ExpressionProperty(body);
-        this.responseType = responseType;
+        this.url = url;
+        this.headers = headers;
+        this.body = body;
+        if (responseType) {
+            this.responseType = responseType;
+        }
+        else {
+            this.responseType = ResponsesTypes.Json;
+        }
         this.resultProperty = resultProperty;
     }
 
     protected onComputeId(): string {
-        return `HttpRequest[${this.method} ${this.url}]`;
+        return `HttpRequest[${ this.method } ${ this.url }]`;
     }
 
     public configure(config: HttpRequestConfiguration): this {
         return super.configure(config);
     }
 
-    public async beginDialog(dc: DialogContext): Promise<DialogTurnResult> {
+    public async beginDialog(dc: DialogContext, options?: O): Promise<DialogTurnResult> {
 
         /**
          * TODO: replace the key value pair in json recursively
          */
-        const url = this.url.evaluate(this.id, dc.state);
-        const body = this.body.evaluate(this.id, dc.state);
-        const headers = this.headers.evaluate(this.id, dc.state);
+        let url = this.url;
+        url = await new TextTemplate(this.url).bindToData(dc.context, dc.state);
+        const headers = this.headers;
 
-        const response = await fetch(url, {
-            method: this.method.toString(),
-            headers: headers,
-            body: body
-        });
+        const instanceBody = this.ReplaceBodyRecursively(dc, this.body);
+
+        const parsedBody = JSON.stringify(instanceBody);
+        const parsedHeaders = Object.assign({ 'Content-Type': 'application/json' }, headers);
+
+        let response: any;
+
+        switch (this.method) {
+            case HttpMethod.DELETE:
+            case HttpMethod.GET:
+                response = await fetch(url, {
+                    method: this.method.toString(),
+                    headers: parsedHeaders,
+                });
+                break;
+            case HttpMethod.PUT:
+            case HttpMethod.PATCH:
+            case HttpMethod.POST:
+                response = await fetch(url, {
+                    method: this.method.toString(),
+                    headers: parsedHeaders,
+                    body: parsedBody,
+                });
+                break;
+        }
 
         const jsonResult = await response.json();
 
         let result: Result = {
-            headers: this.headers,
+            headers: headers,
             statusCode: response.status,
             reasonPhrase: response.statusText
         };
@@ -173,15 +193,47 @@ export class HttpRequest<O extends object = {}> extends Dialog<O> {
         }
 
         if (this.resultProperty) {
-            dc.state.setValue(this.resultProperty, jsonResult);
+            dc.state.setValue(this.resultProperty, result);
         }
 
-        return await dc.endDialog(jsonResult);
+        return await dc.endDialog(result);
+    }
+
+    private ReplaceBodyRecursively(dc: DialogContext, unit: object) {
+        if (typeof unit === 'string') {
+            let text: string = unit as string;
+            if (text.startsWith('{') && text.endsWith('}')) {
+                text = text.slice(1, text.length - 1);
+                const { value } = new ExpressionEngine().parse(text).tryEvaluate(dc.state);
+                return value;
+            }
+            else {
+                return new TextTemplate(text).bindToData(dc.context, dc.state);
+            }
+        }
+
+        if (Array.isArray(unit)) {
+            let result = [];
+            unit.forEach(child => {
+                result.push(this.ReplaceBodyRecursively(dc, child));
+            });
+            return result;
+        }
+
+        if (typeof unit === 'object') {
+            let result = {};
+            for (let key in unit) {
+                result[key] = this.ReplaceBodyRecursively(dc, unit[key]);
+            }
+            return result;
+        }
+
+        return unit;
     }
 }
 
 export class Result {
-    public statusCode?: Number;
+    public statusCode?: number;
 
     public reasonPhrase?: string;
 

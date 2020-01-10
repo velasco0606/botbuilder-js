@@ -5,39 +5,27 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { InputDialogConfiguration, InputDialog, InputDialogOptions, InputState, PromptType } from "./inputDialog";
-import { DialogContext } from "botbuilder-dialogs";
-import { ExpressionPropertyValue, ExpressionProperty } from "../expressionProperty";
+import { DialogContext } from 'botbuilder-dialogs';
+import { ExpressionEngine, Expression } from 'botframework-expressions';
+import { InputDialogConfiguration, InputDialog, InputState } from './inputDialog';
 
 export interface TextInputConfiguration extends InputDialogConfiguration {
-    outputFormat?: TextOutputFormat;
+    outputFormat?: string;
 }
 
-export enum TextOutputFormat {
-    none = 'none',
-    trim = 'trim',
-    lowercase = 'lowercase',
-    uppercase = 'uppercase'
-}
+export class TextInput extends InputDialog {
 
-export class TextInput extends InputDialog<InputDialogOptions> {
+    public static declarativeType = 'Microsoft.TextInput';
 
-    public outputFormat = TextOutputFormat.none;
-    
-    constructor();
-    constructor(valueProperty: string, prompt: PromptType);
-    constructor(valueProperty: string, value: ExpressionPropertyValue<any>, prompt: PromptType);
-    constructor(valueProperty?: string, value?: ExpressionPropertyValue<any>|PromptType, prompt?: PromptType) {
-        super();
-        if (valueProperty) {
-            if(!prompt) {
-                prompt = value as PromptType;
-                value = undefined;
-            }
-            this.valueProperty = valueProperty;
-            if (value !== undefined) { this.value = new ExpressionProperty(value as any) }
-            this.prompt.value = prompt;
-        }
+    private _outputFormatExpression: Expression;
+
+
+    public get outputFormat(): string {
+        return this._outputFormatExpression ? this._outputFormatExpression.toString() : undefined;
+    }
+
+    public set outputFormat(value: string) {
+        this._outputFormatExpression = value ? new ExpressionEngine().parse(value) : undefined;
     }
 
     public configure(config: TextInputConfiguration): this {
@@ -45,31 +33,20 @@ export class TextInput extends InputDialog<InputDialogOptions> {
     }
 
     protected onComputeId(): string {
-        return `TextInput[]`;
+        return `TextInput[${ this.prompt.toString() }]`;
     }
-    
-    protected async onRecognizeInput(dc: DialogContext, consultation: boolean): Promise<InputState> {
-        // Check for consultation
-        if (consultation) {
-            // Text inputs by default allow other dialogs to interrupt them.
-            // - It doesn't matter what we return here as long as it isn't "InputState.valid".
-            return InputState.unrecognized;
-        }
 
+    protected async onRecognizeInput(dc: DialogContext): Promise<InputState> {
         // Treat input as a string
         let input: string = dc.state.getValue(InputDialog.VALUE_PROPERTY).toString();
 
-        // Format output
-        switch (this.outputFormat) {
-            case TextOutputFormat.trim:
-                input = input.trim();
-                break;
-            case TextOutputFormat.lowercase:
-                input = input.trim().toLowerCase();
-                break;
-            case TextOutputFormat.uppercase:
-                input = input.trim().toUpperCase();
-                break;
+        if (this._outputFormatExpression) {
+            const { value, error } = this._outputFormatExpression.tryEvaluate(dc.state);
+            if (!error) {
+                input = value.toString();
+            } else {
+                throw new Error(`OutputFormat expression evaluation resulted in an error. Expression: ${ this._outputFormatExpression.toString() }. Error: ${ error }`);
+            }
         }
 
         // Save formated value and ensure length > 0

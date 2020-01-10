@@ -7,13 +7,15 @@
  */
 import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
 import { Activity, InputHints } from 'botbuilder-core';
-import { ActivityProperty } from '../activityProperty';
+import { ActivityTemplate } from '../templates/activityTemplate';
+import { StaticActivityTemplate } from '../templates/staticActivityTemplate';
+import { Template } from '../template';
 
 export interface SendActivityConfiguration extends DialogConfiguration {
     /**
      * Activity or message text to send the user.
      */
-    activityOrText?: Partial<Activity>|string;
+    activity?: Partial<Activity> | string;
 
     /**
      * (Optional) Structured Speech Markup Language (SSML) to speak to the user.
@@ -26,7 +28,9 @@ export interface SendActivityConfiguration extends DialogConfiguration {
     inputHint?: InputHints;
 }
 
-export class SendActivity extends Dialog {
+export class SendActivity<O extends object = {}> extends Dialog<O> {
+
+    public static declarativeType = 'Microsoft.SendActivity';
 
     /**
      * Creates a new `SendActivity` instance.
@@ -35,56 +39,53 @@ export class SendActivity extends Dialog {
      * @param inputHint (Optional) input hint for the message. Defaults to a value of `InputHints.acceptingInput`.
      */
     constructor();
-    constructor(activityOrText: Partial<Activity>|string, speak?: string, inputHint?: InputHints);
-    constructor(activityOrText?: Partial<Activity>|string, speak?: string, inputHint?: InputHints) {
+    constructor(activityOrText: Partial<Activity>|string);
+    constructor(activityOrText?: Partial<Activity>|string) {
         super();
-        if (activityOrText) { this.activityProperty.value = activityOrText }
-        if (speak) { this.activityProperty.speak = speak }
-        this.activityProperty.inputHint = inputHint || InputHints.AcceptingInput;
+        if (activityOrText && typeof activityOrText === 'string') { 
+            this.activity = new ActivityTemplate(activityOrText); 
+        } else {
+            this.activity = new StaticActivityTemplate(activityOrText as Activity); 
+        }
     }
 
     protected onComputeId(): string {
-        return `SendActivity[${this.activityProperty.displayLabel}]`;
+        if (this.activity instanceof ActivityTemplate) {
+            return `SendActivity(${ this.ellipsis(this.activity.template.trim(), 30) })`;
+        }
+        return `SendActivity(${ this.ellipsis(this.activity.toString().trim(), 30) })`;
+    }
+
+    public configure(config: SendActivityConfiguration): this {
+        return super.configure(config);
     }
 
     /**
      * Activity to send the user.
      */
-    private activityProperty = new ActivityProperty();
-
-    /**
-     * Public getter and setter for declarative activity configuration
-     */
-    public get activity(): Partial<Activity>|string {
-        return this.activityProperty.value;
-    }
-
-    public set activity(value: Partial<Activity>|string) {
-        this.activityProperty.value = value;
-    }
-
-    /**
-     * (Optional) in-memory state property that the result of the send should be saved to.
-     *
-     * @remarks
-     * This is just a convenience property for setting the dialogs [outputBinding](#outputbinding).
-     */
-    public configure(config: SendActivityConfiguration): this {
-        return super.configure(config);
-    }
+    public activity: Template;
 
     public async beginDialog(dc: DialogContext, options: object): Promise<DialogTurnResult> {
-        if (!this.activityProperty.hasValue()) {
+        if (!this.activity) {
             // throw new Error(`SendActivity: no activity assigned for action '${this.id}'.`)
-            throw new Error(`SendActivity: no activity assigned for action.`)
+            throw new Error(`SendActivity: no activity assigned for action.`);
         }
 
-        // Send activity and return result
-        const data = Object.assign({
-            utterance: dc.context.activity.text || ''
-        }, dc.state,  options);
-        const activity = this.activityProperty.format(dc, data);
+        const activity = await this.activity.bindToData(dc.context, dc.state);
         const result = await dc.context.sendActivity(activity);
         return await dc.endDialog(result);
+    }
+
+    private ellipsis(text: string, length: number): string {
+        if (text.length <= length) {
+            return text;
+        }
+
+        const pos: number = text.indexOf(' ', length);
+        if (pos > 0) {
+            return text.substr(0, pos) + '...';
+        }
+
+        return text;
     }
 }

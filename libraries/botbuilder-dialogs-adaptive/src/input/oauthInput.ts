@@ -5,9 +5,9 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { InputDialogConfiguration } from "./inputDialog";
-import { DialogContext, Dialog, DialogTurnResult, PromptOptions, PromptRecognizerResult } from "botbuilder-dialogs";
+import { DialogContext, Dialog, DialogTurnResult, PromptOptions, PromptRecognizerResult } from 'botbuilder-dialogs';
 import { Attachment, InputHints, TokenResponse, IUserTokenProvider, TurnContext, ActivityTypes, Activity, MessageFactory, CardFactory, OAuthLoginTimeoutKey } from "botbuilder-core";
+import { InputDialogConfiguration, InputDialog, InputState } from './inputDialog';
 
 export interface OAuthInputConfiguration extends InputDialogConfiguration {
     /**
@@ -52,7 +52,9 @@ export const channels: any = {
 };
 
 
-export class OAuthInput extends Dialog {
+export class OAuthInput extends InputDialog {
+
+    public static declarativeType = 'Microsoft.OAuthInput'
 
     /**
      * Name of the OAuth connection being used.
@@ -73,16 +75,20 @@ export class OAuthInput extends Dialog {
      * (Optional) number of milliseconds the prompt will wait for the user to authenticate.
      * Defaults to a value `900,000` (15 minutes.)
      */
-    public timeout?: number;
+    public timeout?: number = 900000;
 
-    constructor();
-    constructor(connectionName: string, title: string, text: string, timeout: number);
-    constructor(connectionName?: string, title?: string, text?: string, timeout?: number) {
+    /**
+     * Gets or sets the memory property to use for token result.
+     */
+    public tokenProperty: string;
+
+    public constructor(connectionName?: string, title?: string, text?: string, timeout?: number, tokenProperty?: string) {
         super();
-        if (connectionName) { this.connectionName = connectionName; }
-        if (title) { this.title = title; }
-        if (text) { this.text = text; }
-        if (timeout) { this.timeout = timeout; }
+        this.connectionName = connectionName;
+        this.title = title;
+        this.text = text;
+        this.timeout = timeout;
+        this.tokenProperty = tokenProperty;
     }
 
     public async beginDialog(dc: DialogContext, options?: PromptOptions): Promise<DialogTurnResult> {
@@ -105,6 +111,11 @@ export class OAuthInput extends Dialog {
         // Attempt to get the users token
         const output: TokenResponse = await this.getUserToken(dc.context);
         if (output !== undefined) {
+            // Set token into token property
+            if (this.tokenProperty) {
+                dc.state.setValue(this.tokenProperty, output);
+            }
+
             // Return token
             return await dc.endDialog(output);
         } else {
@@ -124,6 +135,11 @@ export class OAuthInput extends Dialog {
         const isMessage: boolean = dc.context.activity.type === ActivityTypes.Message;
         const hasTimedOut: boolean = isMessage && (new Date().getTime() > state.expires);
         if (hasTimedOut) {
+            // Set token into token property
+            if (this.tokenProperty) {
+                dc.state.setValue(this.tokenProperty, null);
+            }
+
             return await dc.endDialog(undefined);
         } else {
 
@@ -140,6 +156,11 @@ export class OAuthInput extends Dialog {
 
             // Return recognized value or re-prompt
             if (isValid) {
+                // Set token into token property
+                if (this.tokenProperty) {
+                    dc.state.setValue(this.tokenProperty, recognized.value);
+                }
+
                 return await dc.endDialog(recognized.value);
             } else {
                 // Send retry prompt
@@ -194,6 +215,10 @@ export class OAuthInput extends Dialog {
         const adapter: IUserTokenProvider = context.adapter as IUserTokenProvider;
 
         return adapter.signOutUser(context, this.connectionName);
+    }
+
+    protected onRecognizeInput(dc: DialogContext): Promise<InputState> {
+        throw new Error('Method not implemented.');
     }
 
     private async sendOAuthCardAsync(context: TurnContext, prompt?: string | Partial<Activity>): Promise<void> {

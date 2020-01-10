@@ -6,7 +6,7 @@
  * Licensed under the MIT License.
  */
 import { DialogTurnResult, DialogConfiguration, DialogContext, Dialog } from 'botbuilder-dialogs';
-import { ActivityProperty } from '../activityProperty';
+import { ActivityTemplate } from '../templates/activityTemplate';
 
 export interface SendListConfiguration extends DialogConfiguration {
     /**
@@ -26,8 +26,8 @@ export interface SendListConfiguration extends DialogConfiguration {
 }
 
 export class SendList extends Dialog {
-    private readonly _messageTemplate = new ActivityProperty();
-    private readonly _itemTemplate = new ActivityProperty();
+    private _messageTemplate: ActivityTemplate;
+    private _itemTemplate: ActivityTemplate;
 
     /**
      * Creates a new `SendList` instance.
@@ -39,13 +39,13 @@ export class SendList extends Dialog {
     constructor(listProperty: string, messageTemplate: string, itemTemplate?: string);
     constructor(listProperty?: string, messageTemplate?: string, itemTemplate?: string) {
         super();
-        if (listProperty) { this.listProperty = listProperty }
-        if (messageTemplate) { this.messageTemplate = messageTemplate }
-        if (itemTemplate) { this.itemTemplate = itemTemplate }
+        if (listProperty) { this.listProperty = listProperty; }
+        if (messageTemplate) { this.messageTemplate = messageTemplate; }
+        if (itemTemplate) { this.itemTemplate = itemTemplate; }
     }
 
     protected onComputeId(): string {
-        return `SendList[]`;
+        return `SendList[${ this.listProperty }]`;
     }
 
     /**
@@ -57,22 +57,22 @@ export class SendList extends Dialog {
      * Template to use for the main message body.
      */
     public set messageTemplate(value: string) {
-        this._messageTemplate.value = value;
+        this._messageTemplate = new ActivityTemplate(value);
     }
 
     public get messageTemplate(): string {
-        return this._messageTemplate.value as string;
+        return this._messageTemplate.template;
     }
 
     /**
      * (Optional) template used to format individual items.
      */
     public set itemTemplate(value: string) {
-        this._itemTemplate.value = value;
+        this._itemTemplate = new ActivityTemplate(value);
     }
 
     public get itemTemplate(): string {
-        return this._itemTemplate.value as string;
+        return this._itemTemplate.template;
     }
 
     public configure(config: SendListConfiguration): this {
@@ -96,17 +96,17 @@ export class SendList extends Dialog {
         let list = '';
         const value = dc.state.getValue(this.listProperty);
         if (Array.isArray(value) && value.length > 0) {
-            value.forEach((item) => {
-                list += this._itemTemplate.format(dc, { item: item }).text;
+            value.forEach(async (item): Promise<void> => {
+                list += (await this._itemTemplate.bindToData(dc.context, { item: item })).text;
             });
         } else if (typeof value === 'object') {
             for (const key in value) {
-                list += this._itemTemplate.format(dc, { key: key, item: value[key] }).text;
+                list += (await this._itemTemplate.bindToData(dc.context, { key: key, item: value[key] })).text;
             }
         }
 
         // Render message
-        const activity = this._messageTemplate.format(dc, { utterance: dc.context.activity.text || '', list: list });
+        const activity = await this._messageTemplate.bindToData(dc.context, { utterance: dc.context.activity.text || '', list: list });
         const result = await dc.context.sendActivity(activity);
         return await dc.endDialog(result);
     }

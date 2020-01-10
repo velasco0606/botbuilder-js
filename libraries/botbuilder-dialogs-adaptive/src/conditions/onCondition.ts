@@ -5,11 +5,19 @@
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License.
  */
-import { Dialog } from 'botbuilder-dialogs';
+import { Dialog, DialogDependencies, Configurable } from 'botbuilder-dialogs';
 import { Expression, ExpressionParserInterface, ExpressionType, Constant, ExpressionEngine } from 'botframework-expressions';
 import { SequenceContext, ActionChangeList, ActionState, ActionChangeType } from '../sequenceContext';
 
-export class OnCondition {
+export interface OnConditionConfiguration {
+    condition?: string;
+    actions?: Dialog[];
+}
+
+export class OnCondition extends Configurable implements DialogDependencies {
+    
+    public static declarativeType = 'Microsoft.OnCondition';
+
     /**
      * Evaluates the rule and returns a predicted set of changes that should be applied to the
      * current plan.
@@ -21,7 +29,6 @@ export class OnCondition {
 
     private readonly _extraConstraints: Expression[] = [];
     private _fullConstraint: Expression;
-
 
     /**
      * Gets or sets the condition which needs to be met for the actions to be executed (OPTIONAL).
@@ -38,9 +45,14 @@ export class OnCondition {
      * @param condition (Optional) The condition which needs to be met for the actions to be executed.
      * @param actions (Optional) The actions to add to the plan when the rule constraints are met.
      */
-    constructor(condition?: string, actions: Dialog[] = []) {
+    public constructor(condition?: string, actions: Dialog[] = []) {
+        super();
         this.condition = condition;
         this.actions = actions;
+    }
+
+    public configure(config: OnConditionConfiguration): this {
+        return super.configure(config);
     }
 
     /**
@@ -98,6 +110,25 @@ export class OnCondition {
      */
     public async execute(planningContext: SequenceContext): Promise<ActionChangeList[]> {
         return [this.onCreateChangeList(planningContext)];
+    }
+
+    /**
+     * Get child dialog dependencies so they can be added to the containers dialogset.
+     */
+    public getDependencies(): Dialog[] {
+        const dependencies: Dialog[] = [];
+
+        for (let i = 0; i < this.actions.length; i++) {
+            const action = this.actions[i];
+            dependencies.push(action);
+
+            // Automatically add any child dependencies the dialog might have
+            if (typeof ((action as any) as DialogDependencies).getDependencies == 'function') {
+                ((action as any) as DialogDependencies).getDependencies().forEach((child) => dependencies.push(child));
+            }
+        }
+
+        return dependencies;
     }
 
     protected onCreateChangeList(planningContext: SequenceContext, dialogOptions?: any): ActionChangeList {
