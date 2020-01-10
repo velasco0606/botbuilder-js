@@ -26,9 +26,8 @@ export class FileResource implements IResource {
         this.resourceId = this.path.replace(/^.*[\\\/]/, '');
     }
 
-    public get fullName(): string {return this.path;}; 
-
-
+    public get fullName(): string {return this.path;}
+    
     public id(): string {
         return this.resourceId;
     }
